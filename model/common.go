@@ -32,7 +32,7 @@ Retry:
 		Exec("UPDATE version "+
 			"set current = current + 1 "+
 			"WHERE id = 1 and current = ?",
-			version).RowsAffected < int64(1) {
+			version).RowsAffected == int64(0) {
 		goto Retry
 	}
 	return nil

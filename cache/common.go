@@ -4,13 +4,15 @@ import (
 	"model"
 )
 
-func makeNodeArray2Tree(nodes []*model.ResourceTreeNode) (*Resource, error) {
-	tree, err := makeArray2Tree(resourceTreeNodes)
+func makeNodeArray2Tree(nodes []*model.ResourceTreeNode, version int64) (*Resource, error) {
+	tree, err := makeArray2Tree(nodes)
 	if err != nil {
 		return nil, err
 	}
+	index, err := makeTreeIndex(tree)
 	return &Resource{
 		Tree:    tree,
+		Index:   index,
 		Version: version}, nil
 
 }
@@ -40,4 +42,8 @@ func makeTree(root *ResourceTreeNode, parentMap map[int][]*ResourceTreeNode) {
 	for i := range root.Childs {
 		makeTree(root.Childs[i], parentMap)
 	}
+}
+
+func makeTreeIndex(tree *ResourceTree) (map[int]*ResourceTree, error) {
+
 }

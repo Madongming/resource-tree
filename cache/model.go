@@ -4,20 +4,22 @@ var Cache *Resource
 
 type Resource struct {
 	Tree    *ResourceTree
+	Index   map[int]*ResourceTree
 	Version int64
 }
 
+// For api response and in cache.
 type ResourceTree struct {
-	Node   *ResourceTreeNode
-	Childs []*ResourceTree
+	Node   *ResourceTreeNode `json:"node"`
+	Childs []*ResourceTree   `json:"childs"`
 }
 
 type ResourceTreeNode struct {
-	ID          int
-	Parent      int
-	Description string
-	Level       int
-	Name        string
-	EnName      string
-	Key         string
+	ID          int    `json:"id"`
+	Parent      int    `json:"parent"`
+	Description string `json:"description"`
+	Level       int    `json:"level"`
+	Name        string `json:"name"`
+	EnName      string `json:"enName"`
+	Key         string `json:"key"`
 }
