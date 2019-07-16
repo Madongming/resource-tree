@@ -41,25 +41,24 @@ type User struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	RootNode  int
-	Name      string `gorm:"type:varchar(378)"`
-	EnName    string `gorm:"type:varchar(128)"`
+	Name      string `gorm:"type:varchar(128)"`
+	CnName    string `gorm:"type:varchar(378)"`
 }
 
 type Group struct {
 	ID        int `gorm:"primary_key"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	RootNode  int
-	Name      string `gorm:"type:varchar(378)"`
-	EnName    string `gorm:"type:varchar(128)"`
+	Name      string `gorm:"type:varchar(128)"`
+	CnName    string `gorm:"type:varchar(378)"`
 }
 
-type Tag struct {
+type UserGroup struct {
 	ID        int `gorm:"primary_key"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	NodeId    int
-	Text      `gorm:"type:varchar(4096)"`
+	UserID    int
+	GroupID   int
 }
 
 // About the ReadWriteMask

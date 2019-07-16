@@ -44,6 +44,11 @@ func makeTree(root *ResourceTreeNode, parentMap map[int][]*ResourceTreeNode) {
 	}
 }
 
-func makeTreeIndex(tree *ResourceTree) (map[int]*ResourceTree, error) {
-
+func makeTreeIndex(tree *ResourceTree, treeMap map[int]*ResourceTree) {
+	treeMap[tree.Node.ID] = tree.Node
+	if tree.Childs != nil && len(tree.Childs) != 0 {
+		for i := range tree.Childs {
+			makeTreeIndex(tree.Childs[i], treeMap)
+		}
+	}
 }
