@@ -4,7 +4,7 @@ var Cache *Resource
 
 type Resource struct {
 	Tree    *ResourceTree
-	Index   map[int]*ResourceTree
+	Index   []*ResourceTree
 	Version int64
 }
 
