@@ -4,17 +4,6 @@ import (
 	. "global"
 )
 
-func UpdateUserRootNode(userId, rootNode interface{}) error {
-	user, err := GetUserById(userId)
-	if err != nil {
-		return err
-	} else if user == nil {
-		return nil
-	}
-	user.RootNode = rootNode.(int)
-	return user.update()
-}
-
 func UpdataUserNodePermissions(userId, nodeId interface{}, permissions int) error {
 	userPermission, err := GetNodeUserPermission(userId, nodeId)
 	if err != nil {

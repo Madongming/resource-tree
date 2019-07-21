@@ -5,16 +5,21 @@ import (
 )
 
 func makeNodeArray2Tree(nodes []*model.ResourceTreeNode, version int64) (*Resource, error) {
+	// Get cahche the structrue from the model.
+	resourceTreeNodes := changeModel2Resource(nodes)
+
+	// 最大id + 1，做为索引长度
+	indexLen := resourceTreeNodes[len(resourceTreeNodes)-1].ID + 1
 	// 利用父ID建立树形索引
-	tree, err := makeArray2Tree(nodes)
+	// 第二个参数为了防止动态扩充索引切片
+	tree, err := makeArray2Tree(resourceTreeNodes, indexLen)
 	if err != nil {
 		return nil, err
 	}
 
-	// 利用节点ID建立索引
-	maxNumOfNodeID := nodes[len(node)-1].ID
-	index := make([]*ResourceTree, maxNumOfNodeID+1)
-	makeTreeIndex(tree, index)
+	// 利用节点ID建立索引树节点的索引
+	// 第二个参数为了防止动态扩充索引切片
+	index := makeTreeIndex(tree, indexLen)
 
 	return &Resource{
 		Tree:    tree,
@@ -24,46 +29,85 @@ func makeNodeArray2Tree(nodes []*model.ResourceTreeNode, version int64) (*Resour
 
 }
 
-func makeArray2Tree(nodes []*model.ResourceTreeNode) (*ResourceTree, error) {
-	// 建立 父节点ID-> 子节点序列的映射，最多n个
-	parentMap := make(map[int][]*ResourceTreeNode, len(nodes))
+func changeModel2Resource(nodes []*model.ResourceTreeNode) []*ResourceTreeNode {
+	if nodes == nil || len(nodes) == 0 {
+		return []*ResourceTreeNode{}
+	}
+	results := make([]*ResourceTreeNode, len(nodes))
 	for i := range nodes {
-		parentMap[nodes[i].Parent] = append(
-			parentMap[nodes[i].Parent], nodes[i])
+		results[i] = &ResourceTreeNode{
+			ID:          nodes[i].ID,
+			Parent:      nodes[i].Parent,
+			Description: nodes[i].Description,
+			Level:       nodes[i].Level,
+			Name:        nodes[i].Name,
+			CnName:      nodes[i].CnName,
+			Key:         nodes[i].Key,
+		}
+	}
+	results[0] = (*ResourceTreeNode)(nil)
+	return results
+}
+
+func makeArray2Tree(resourceTreeNodes []*ResourceTreeNode, indexLen int) (*ResourceTree, error) {
+	if resourceTreeNodes == nil || len(resourceTreeNodes) == 0 {
+		return nil, nil
 	}
 
-	// In database, must set root node's parent is -1.
-	root, found := parentMap[-1]
-	if !found {
+	parentIndex := make([]*ResourceTreeNode, indexLen)
+	// 建立 父节点ID-> 子节点序列的映射，最多n个
+	for i := 1; i < indexLen; i++ {
+		parentIndex[resourceTreeNodes[i].Parent] = append(parentIndex[resourceTreeNodes[i].Parent],
+			resourceTreeNodes[i])
+	}
+
+	// In database, must set root node's parent is 0.
+	root := parentIndex[0]
+	if root == nil {
 		return nil, ERR_ROOT_NODE_NOT_EXIST
 	}
-	makeTree(root, parentMap)
+
+	makeTree(root, parentIndex)
 	return root, nil
 }
 
-func makeTree(root *ResourceTreeNode, parentMap map[int][]*ResourceTreeNode) {
-	var found bool
-	root.Childs, found = parentMap[root.ID]
-	if !found {
+func makeTree(root *ResourceTreeNode, parentIndex [][]*ResourceTreeNode) {
+	root.Childs = parentIndex[root.ID]
+	if root.Childs == nil {
 		return
 	}
 
 	for i := range root.Childs {
-		makeTree(root.Childs[i], parentMap)
+		makeTree(root.Childs[i], parentIndex)
 	}
 }
 
-func makeTreeIndex(tree *ResourceTree, index []*ResourceTree) {
+func makeTreeIndex(tree *ResourceTree, indexLen int) []*ResourceTree {
 	if tree == nil {
 		return
-	} else if tree.Node != nil {
-		index[tree.Node.ID] = tree
 	}
+	index := make([]*ResourceTree, index)
+	makeIndex(tree, index)
+	return index
+}
+
+func makeIndex(tree *ResourceTree, index []*ResourceTree) {
+	if tree == nil {
+		return
+	}
+
+	if tree.Node == nil {
+		return
+	} else {
+		index[tree.Node.ID] = tree
+
+	}
+
 	if tree.Childs == nil || len(tree.Childs) == 0 {
 		return
 	}
 
 	for i := range tree.Childs {
-		makeTreeIndex(tree.Childs[i], index)
+		makeIndex(tree.Childs[i], index)
 	}
 }

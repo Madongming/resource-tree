@@ -19,7 +19,7 @@ type ResourceTreeNode struct {
 	Parent      int    `json:"parent"`
 	Description string `json:"description"`
 	Level       int    `json:"level"`
-	Name        string `json:"name"`
-	EnName      string `json:"enName"`
+	Name        string `json:"Name"`
+	CnName      string `json:"cnName"`
 	Key         string `json:"key"`
 }

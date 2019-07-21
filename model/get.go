@@ -32,6 +32,32 @@ func GetUserById(id interface{}) (*User, error) {
 	return user, nil
 }
 
+func GetUsersByIds(ids []int) ([]*User, error) {
+	var users []*User
+	if ids == nil || len(ids) == 0 {
+		return nil, nil
+	}
+	idsIter := make([]interface{}, len(ids))
+	idsQueryStr := make([]string, len(ids))
+	for i := range ids {
+		idsIter[i] = ids[i]
+		idsQueryStr[i] = "?"
+	}
+
+	if result := DB().
+		Where("`id` in ("+
+			strings.Join(idsQueryStr, ",")+
+			")",
+			idsIter...).
+		Find(&users); result.Error != nil {
+		if result.RecordNotFound() {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return users, nil
+}
+
 func GetGroupById(id interface{}) (*Group, error) {
 	group := &Group{}
 	if result := DB().
@@ -42,6 +68,32 @@ func GetGroupById(id interface{}) (*Group, error) {
 		return nil, result.Error
 	}
 	return group, nil
+}
+
+func GetGroupsByIds(ids []int) ([]*Group, error) {
+	var groups []*Group
+	if ids == nil || len(ids) == 0 {
+		return nil, nil
+	}
+	idsIter := make([]interface{}, len(ids))
+	idsQueryStr := make([]string, len(ids))
+	for i := range ids {
+		idsIter[i] = ids[i]
+		idsQueryStr[i] = "?"
+	}
+
+	if result := DB().
+		Where("`id` in ("+
+			strings.Join(idsQueryStr, ",")+
+			")",
+			idsIter...).
+		Find(&groups); result.Error != nil {
+		if result.RecordNotFound() {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return groups, nil
 }
 
 func GetUserByName(name string) (*User, error) {
@@ -149,4 +201,40 @@ func GetNodeGroupPermission(groupId, nodeId interface{}) (*GroupPermission, erro
 		return nil, result.Error
 	}
 	return groupPermission, nil
+}
+
+func GetTreeNodeUsers(nodeId interface{}) ([]*User, error) {
+	var permissions []*UserPermission
+	if result := DB().
+		Where("`node_id` = ?", nodeId).
+		Find(&permissions); result.Error != nil {
+		if result.RecordNotFound() {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	userIds := make([]int, len(permissions))
+	for i := range permissions {
+		userIds[i] = permissions[i].UserID
+	}
+
+	return GetUsersByIds(userIds)
+}
+
+func GetTreeNodeGroups(groupId interface{}) ([]*User, error) {
+	var permissions []*GroupPermission
+	if result := DB().
+		Where("`node_id` = ?", nodeId).
+		Find(&permissions); result.Error != nil {
+		if result.RecordNotFound() {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	groupIds := make([]int, len(permissions))
+	for i := range permissions {
+		groupIds[i] = permissions[i].GroupID
+	}
+
+	return GetGroupsByIds(groupIds)
 }
