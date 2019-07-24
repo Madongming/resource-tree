@@ -14,7 +14,7 @@ func GetAllNodes() ([]*ResourceTreeNode, error) {
 	if result := DB().
 		Find(&resourceTreeNodes); result.Error != nil {
 		if result.RecordNotFound() {
-			return nil, nil
+			return []*ResourceTreeNode{}, nil
 		}
 	}
 	return resourceTreeNodes, nil

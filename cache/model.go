@@ -1,11 +1,32 @@
 package cache
 
-var Cache *Resource
+import (
+	"sync"
+)
+
+var (
+	Cache *Resource
+	Mux   sync.Mutex
+)
+
+var TreeNodePool = sync.Pool{
+	New: func() interface{} {
+		return &ResourceTreeNode{}
+	},
+}
 
 type Resource struct {
 	Tree    *ResourceTree
 	Index   []*ResourceTree
 	Version int64
+	Data    []*ResourceTreeNode
+
+	ReTree    *ResourceTree
+	ReIndex   []*ResourceTree
+	ReData    []*ResourceTreeNode
+	ReVersion int64
+
+	IsReData bool
 }
 
 // For api response and in cache.
