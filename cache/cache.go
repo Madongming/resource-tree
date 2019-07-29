@@ -12,25 +12,17 @@ func init() {
 	}
 }
 
-func CasResource() error {
+func CasResource() (bool, error) {
 	version, err := model.GetResourceVersion()
 	if err != nil {
-		return err
+		return false, err
 	} else if Cache != nil && (Cache.IsReData || Cache.Version == version) {
-		return nil
+		return false, nil
 	}
 	if err := fetchCache(version); err != nil {
-		return err
+		return false, err
 	}
-	return nil
-}
-
-func FindTree(nodeId int) (*ResourceTree, error) {
-	if tree, found := Cache.Index[nodeId]; !found {
-		return nil, nil
-	}
-
-	return tree, nil
+	return true, nil
 }
 
 func fetchCache(versions ...int64) error {

@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	. "global"
 )
 
@@ -141,13 +143,13 @@ func GetGroupUsers(groupId interface{}) ([]*User, error) {
 	return users, nil
 }
 
-func GetUserGroups(userId interface{}) ([]*User, error) {
+func GetUserGroups(userId interface{}) ([]*Group, error) {
 	var userGroups []*UserGroup
 	if result := DB().
 		Where("`group_id` = ?", groupId).
 		Find(userGroups); result.Error != nil {
 		if result.RecordNotFound() {
-			return nil, nil
+			return []*Group{}, nil
 		}
 		return nil, result.Error
 	}
@@ -237,4 +239,67 @@ func GetTreeNodeGroups(groupId interface{}) ([]*User, error) {
 	}
 
 	return GetGroupsByIds(groupIds)
+}
+
+func GetGroupNodeIds(groupId interface{}) ([]int, error) {
+	var groupPermissions []*GroupPermission
+	if result := DB().
+		Where("`group_id` = ?", groupId).
+		Find(&groupPermissions); result.Error != nil {
+		if result.RecordNotFound() {
+			return []int{}, nil
+		}
+		return nil, result.Error
+	}
+	nodeIds := make([]int, len(groupPermissions))
+	for i := range groupPermissions {
+		nodeIds[i] = groupPermissions[i].NodeID
+	}
+	return nodeIds
+}
+
+func GetUserNodeIds(userId interface{}) ([]int, error) {
+	var userPermissions []*UserPermission
+	if result := DB().
+		Where("`user_id` = ?", userId).
+		Find(&userPermissions); result.Error != nil {
+		if result.RecordNotFound() {
+			return []int{}, nil
+		}
+		return nil, result.Error
+	}
+	nodeIds := make([]int, len(userPermissions))
+	for i := range userPermissions {
+		nodeIds[i] = userPermissions[i].NodeID
+	}
+	return nodeIds
+}
+
+func GetGroupsNodeIds(groups []*Group) ([]int, error) {
+	if groups == nil || len(groups) == 0 {
+		return []int{}, nil
+	}
+	groupIds := make([]interface{}, len(groups))
+	queryArray := make([]string, len(groups))
+	for i := range groups {
+		groupIds[i] = groups[i].ID
+		queryArray[i] = "?"
+	}
+
+	var groupPermissions []*GroupPermission
+	if result := DB().
+		Where("`group_id` in (" +
+			strings.Join(queryArray, ","+
+				")", groupIds...)).
+		Find(&groupPermissions); result.Error != nil {
+		if result.RecordNotFound() {
+			return []int{}, nil
+		}
+		return nil, err
+	}
+	nodeIds := make([]int, len(groupPermissions))
+	for i := range groupPermissions {
+		nodeIds[i] = groupPermissions[i].NodeID
+	}
+	return nodeIds, nil
 }

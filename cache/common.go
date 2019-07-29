@@ -5,7 +5,7 @@ import (
 )
 
 func (c *Cache) makeNodeArray2Tree(nodes []*model.ResourceTreeNode) error {
-	// Get cahche the structrue from the model.
+	// Get cache the structrue from the model.
 	c.changeModel2Resource(nodes)
 
 	// 最大id + 1，做为索引长度
