@@ -29,6 +29,7 @@ type ConfigFile struct {
 	ExternalAddress string     `yaml:"external_address"`
 	Http            *HttpFile  `yaml:"http"`
 	Mysql           *MysqlFile `yaml:"mysql"`
+	UserCacheSize   int64      `yaml:"user_cache_size"`
 }
 
 type HttpFile struct {

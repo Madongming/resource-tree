@@ -5,8 +5,9 @@ import (
 )
 
 var (
-	Cache *Resource
-	Mux   sync.Mutex
+	Cache       *Resource
+	Mux         sync.Mutex
+	UserTreeLRU *LRU
 )
 
 var TreeNodePool = sync.Pool{
@@ -43,4 +44,24 @@ type ResourceTreeNode struct {
 	Name        string `json:"Name"`
 	CnName      string `json:"cnName"`
 	Key         string `json:"key"`
+}
+
+type LRU struct {
+	Index map[int]*CacheNode
+	Data  *CacheList
+	Mux   sync.Mutex
+}
+
+// 环形双向链表
+type CacheList struct {
+	UserCacheHead *CacheNode
+	Size          int64
+}
+
+// 链表节点
+type CacheNode struct {
+	Val    *ResourceTree
+	UserId int
+	Pre    *CacheNode
+	Next   *CacheNode
 }

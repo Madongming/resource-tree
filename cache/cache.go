@@ -3,12 +3,16 @@ package cache
 import (
 	"sync"
 
+	. "global"
 	"model"
 )
 
 func init() {
 	if Cache == nil {
 		fetchCache()
+	}
+	if LRU == nil {
+		initLRU()
 	}
 }
 
@@ -109,4 +113,72 @@ func (c *Cache) swapReData() {
 	c.Index, c.ReIndex = c.ReIndex, c.Index
 	c.Version, c.ReVersion = c.ReVersion, c.Version
 	Mux.Unlock()
+}
+
+// 初始化LRU
+func initLRU() {
+	UserTreeLRU = new(LRU)
+	UserTreeLRU.Index = make(map[int]*CacheNode, Configs.UserCacheSize)
+
+	// Make double link.
+	dummy := new(CacheNode)
+	p := dummy
+	for i := 0; i < Configs.UserCacheSize; i++ {
+		node := new(CacheNode)
+		p.Next = node
+		node.Pre = p
+		p = p.Next
+	}
+	p.Next = dummy.Next
+	dummy.Next.Pre = p
+	UserTreeLRU.Data = &CacheList{
+		UserCacheHead: dummy.Next,
+		Size:          Configs.UserCacheSize,
+		Mux:           sync.Mutex{},
+	}
+}
+
+func (ul *UserTreeLRU) Set(userId int, tree *ResourceTree) {
+	// 保证线程安全
+	ul.Mux.Lock()
+
+	if v, found := ul.Index[userId]; found {
+		// 缓存存在，更新
+		v.Val = tree
+		// 调节顺序
+		changeHeadPreAndUpNode(
+			ul.Data.UserCacheHead.Pre, v)
+	} else {
+		// 缓存不存在，更新的数据覆盖head前一个节点
+		ul.Data.UserCacheHead.Pre.Val = tree
+		if ul.Data.UserCacheHead.Pre.UserId != 0 {
+			// 该节点已经被使用过，删除Index中的key
+			delete(ul.Index,
+				ul.Data.UserCacheHead.Pre.UserId)
+		}
+		ul.Index[userId] = ul.Data.UserCacheHead.Pre
+		ul.Data.UserCacheHead.Pre.UserId = userId
+	}
+
+	// 向前移动环形链表的头，让头节点始终保持
+	// 最新的数据，前一个节点是最旧的数据
+	ul.Data.UserCacheHead = ul.Data.UserCacheHead.Pre
+
+	ul.Mux.Unlock()
+}
+
+func (ul *UserTreeLRU) changeHeadPreAndUpNode(headPreNode,
+	updatedNode *CacheNode) {
+	headPreNodePre := headPreNode.Pre
+	headPreNode.Pre = updatedNode.Pre
+	updatedNode.Pre.Next = headPreNode
+
+	headPreNodeNext := headPreNode.Next
+	headPreNode.Next = updatedNode.Next
+	updatedNode.Next.Pre = headPreNode
+
+	updatedNode.Next = headPreNodeNext
+	updatedNode.Pre = headPreNodePre
+	headPreNodePre.Next = updatedNode
+	headPreNodeNext.Pre = updatedNode
 }
