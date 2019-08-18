@@ -1,184 +1,133 @@
 package cache
 
 import (
-	"sync"
-
 	. "global"
-	"model"
 )
 
+var (
+	ResourceNodes *ResourceNodeList // 所有节点
+	IsReData      bool              // 正在重新获取数据库中的数据并重建某个索引
+	Mux           sync.Mutex
+
+	Tree        *TreeCache // 缓存所有节点的树
+	UserTreeLRU *LRU       // 缓存用户有权限节点的子树
+	ResourceLRU *LRU       // 缓存一个节点的关联图
+
+	NodePool = sync.Pool{
+		New: func() interface{} {
+			return &model.ResourceNode{}
+		},
+	}
+)
+
+// 初始化LRU
 func init() {
-	if Cache == nil {
-		fetchCache()
+	if ResourceNodes == nil {
+		ResourceNodes = new(ResourceNodeList)
 	}
-	if LRU == nil {
-		initLRU()
+	if Tree == nil {
+		Tree = new(TreeCache)
+	}
+	if UserTreeLRU == nil {
+		UserTreeLRU = newLRU(Configs.UserCacheHead)
+	}
+	if ResourceLRU == nil {
+		ResourceLRU = newLRU(Config.ResourceCacheSize)
 	}
 }
 
-func CasResource() (bool, error) {
-	version, err := model.GetResourceVersion()
-	if err != nil {
-		return false, err
-	} else if Cache != nil && (Cache.IsReData || Cache.Version == version) {
-		return false, nil
-	}
-	if err := fetchCache(version); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func fetchCache(versions ...int64) error {
-	if len(versions) == 0 {
-		// 缓存中没有数据
-		var err error
-		Cache.ReVersion, err = model.GetResourceVersion()
-		if err != nil {
-			return err
-		}
-	} else {
-		Cache.ReVersion = versions[0]
-	}
-
-	// 从数据库中获取全部节点数据
-	allNodes, err := model.GetAllNodes()
-	if err != nil {
-		return err
-	} else if len(allNodes) == 0 {
-		return nil
+func (tc *TreeCache) Set(version int, data []*model.DBResourceTreeNode) error {
+	if tc.Resource.IsReData {
+		return ERR_RE_INDEX
 	}
 
 	// 设置为正在重新索引
-	Cache.setIsReData(true)
+	setIsReData(true)
 
+	ResourceNodes.ReVersion = version
+	tc.ReVersion = version
 	// 预分配加载数据的对象
-	Cache.perMallocReData(len(allNodes))
+	ResourceNodes.perMallocReData(len(data))
 
+	// 将从数据库取出的节点转成缓存里的节点.
+	ResourceNodes.changeModel2Resource(nodes)
 	// 在重新索引的数据集上产生树和id索引
-	if err := Cache.makeNodeArray2Tree(allNodes); err != nil {
+	if err := tc.makeTree(); err != nil {
 		// 失败，提前结束
-		Cache.setIsReData(false)
+		setIsReData(false)
 		return err
 	}
 
 	// 交换新据、旧数据集
-	Cache.swapReData()
+	tc.swapReData()
+	ResourceNodes.swapReData()
 
 	// 重新索引结束
-	Cache.setIsReData(false)
+	setIsReData(false)
 	return nil
 }
 
-// 设置缓存正在重新索引或完成索引
-func (c *Cache) setIsReData(i bool) {
-	Mux.Lock()
-	c.IsReData = i
-	Mux.Unlock()
+func (tc *TreeCache) GetTreeNode(nodeId int) (*model.Tree, error) {
+	if nodeId > len(tc.Index) || tc.Index[nodeId] == nil {
+		return nil, ERR_NODE_NOT_EXIST
+	}
+	return tc.Index[nodeId], nil
 }
 
-// 预先分配用于重新加载的数据对象
-func (c *Cache) perMallocReData(dataLen int) {
-	if dataLen == 0 {
-		return
+func (tc *TreeCache) Get(uid ...int) (*model.Tree, error) {
+	if len(uid) == 0 {
+		return tc.Tree, nil
 	}
-	// 预分配树的对象，从对象池新取或者复用之前的对象
-	if Cache.ReData == nil {
-		// 第一次更新
-		Cache.ReData = make([]*ResourceTreeNode, dataLen)
-		for i := range Cache.ReData {
-			// 从池子中取对象
-			Cache.ReData[i] = TreeNodePool.Get().(*ResourceTreeNode)
-		}
-	} else if len(Cache.ReData) != dataLen {
-		// 对象个数有变化
-		Cache.IsReData = true
-		// 将对象放回池子
-		for i := range Cache.ReData {
-			TreeNodePool.Put(Cache.ReData[i])
-		}
-		Cache.ReData = make([]*ResourceTreeNode, dataLen)
-		for i := range Cache.Data {
-			// 从池子中取对象
-			Cache.Data[i] = TreeNodePool.Get().(*ResourceTreeNode)
-		}
-	}
-	// 以上都未匹配，可以直接复用
+
+	// 根据用户删除没有权限的节点
+	return nil, nil
 }
 
-// 交换重新索引的数据及旧数据
-func (c *Cache) swapReData() {
-	Mux.Lock()
-	c.Data, c.ReData = c.ReData, c.Data
-	c.Index, c.ReIndex = c.ReIndex, c.Index
-	c.Version, c.ReVersion = c.ReVersion, c.Version
-	Mux.Unlock()
-}
-
-// 初始化LRU
-func initLRU() {
-	UserTreeLRU = new(LRU)
-	UserTreeLRU.Index = make(map[int]*CacheNode, Configs.UserCacheSize)
-
-	// Make double link.
-	dummy := new(CacheNode)
-	p := dummy
-	for i := 0; i < Configs.UserCacheSize; i++ {
-		node := new(CacheNode)
-		p.Next = node
-		node.Pre = p
-		p = p.Next
-	}
-	p.Next = dummy.Next
-	dummy.Next.Pre = p
-	UserTreeLRU.Data = &CacheList{
-		UserCacheHead: dummy.Next,
-		Size:          Configs.UserCacheSize,
-		Mux:           sync.Mutex{},
-	}
-}
-
-func (ul *UserTreeLRU) Set(userId int, tree *ResourceTree) {
+func (l *LRU) Set(key int, value interface{}) {
 	// 保证线程安全
-	ul.Mux.Lock()
+	l.mux.Lock()
+	defer l.mux.Unlock()
 
-	if v, found := ul.Index[userId]; found {
+	if v, found := l.Index[key]; found {
 		// 缓存存在，更新
-		v.Val = tree
+		v.Val = value
 		// 调节顺序
 		changeHeadPreAndUpNode(
-			ul.Data.UserCacheHead.Pre, v)
+			l.Data.UserCacheHead.Pre, v)
 	} else {
 		// 缓存不存在，更新的数据覆盖head前一个节点
-		ul.Data.UserCacheHead.Pre.Val = tree
-		if ul.Data.UserCacheHead.Pre.UserId != 0 {
+		l.Data.UserCacheHead.Pre.Val = value
+		if l.Data.UserCacheHead.Pre.Key != 0 {
 			// 该节点已经被使用过，删除Index中的key
-			delete(ul.Index,
-				ul.Data.UserCacheHead.Pre.UserId)
+			delete(l.Index,
+				l.Data.UserCacheHead.Pre.Key)
 		}
-		ul.Index[userId] = ul.Data.UserCacheHead.Pre
-		ul.Data.UserCacheHead.Pre.UserId = userId
+		l.Index[key] = l.Data.UserCacheHead.Pre
+		l.Data.UserCacheHead.Pre.Key = key
 	}
 
 	// 向前移动环形链表的头，让头节点始终保持
 	// 最新的数据，前一个节点是最旧的数据
-	ul.Data.UserCacheHead = ul.Data.UserCacheHead.Pre
-
-	ul.Mux.Unlock()
+	l.Data.UserCacheHead = l.Data.UserCacheHead.Pre
 }
 
-func (ul *UserTreeLRU) changeHeadPreAndUpNode(headPreNode,
-	updatedNode *CacheNode) {
-	headPreNodePre := headPreNode.Pre
-	headPreNode.Pre = updatedNode.Pre
-	updatedNode.Pre.Next = headPreNode
+func (l *LRU) Get(key int) (interface{}, error) {
+	value, found := l.Index[key]
+	if !found {
+		return nil, ERR_CACHE_KEY_NOT_EXIST
+	}
+	// 调节顺序
+	changeHeadPreAndUpNode(
+		l.Data.UserCacheHead.Pre, value)
 
-	headPreNodeNext := headPreNode.Next
-	headPreNode.Next = updatedNode.Next
-	updatedNode.Next.Pre = headPreNode
+	// 向前移动环形链表的头，让头节点始终保持
+	// 最新的数据，前一个节点是最旧的数据
+	l.Data.UserCacheHead = l.Data.UserCacheHead.Pre
+	return value.Val, nil
+}
 
-	updatedNode.Next = headPreNodeNext
-	updatedNode.Pre = headPreNodePre
-	headPreNodePre.Next = updatedNode
-	headPreNodeNext.Pre = updatedNode
+func NewTreeByPermission(permissionSet map[int]struct{}) (*model.Tree, error) {
+	newTree := new(model.Tree)
+	newTreeByPermission(Tree, newTree, permissionSet)
+	return newTree, nil
 }

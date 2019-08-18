@@ -25,11 +25,12 @@ type ConfigFileAll struct {
 
 //Parse Yaml File
 type ConfigFile struct {
-	Log             string     `yaml:"log"`
-	ExternalAddress string     `yaml:"external_address"`
-	Http            *HttpFile  `yaml:"http"`
-	Mysql           *MysqlFile `yaml:"mysql"`
-	UserCacheSize   int64      `yaml:"user_cache_size"`
+	Log               string     `yaml:"log"`
+	ExternalAddress   string     `yaml:"external_address"`
+	Http              *HttpFile  `yaml:"http"`
+	Mysql             *MysqlFile `yaml:"mysql"`
+	UserCacheSize     int64      `yaml:"user_cache_size"`
+	ResourceCacheSize int64      `yaml:"resource_cache_size"`
 }
 
 type HttpFile struct {
@@ -52,10 +53,12 @@ type MysqlFile struct {
 
 //Userd for Program
 type Config struct {
-	Log             string
-	ExternalAddress string
-	Http            *Http
-	Mysql           *Mysql
+	Log               string
+	ExternalAddress   string
+	Http              *Http
+	Mysql             *Mysql
+	UserCacheSize     int64
+	ResourceCacheSize int64
 }
 
 type Http struct {
@@ -128,5 +131,7 @@ func initConfig() {
 			MaxOpenConns: configFile.Mysql.MaxOpenConns,
 			MaxIdleConns: configFile.Mysql.MaxIdleConns,
 		},
+		UserCacheSize:     configFile.UserCacheSize,
+		ResourceCacheSize: configFile.ResourceCacheSize,
 	}
 }
