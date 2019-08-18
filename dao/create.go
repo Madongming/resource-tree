@@ -3,6 +3,7 @@ package dao
 import (
 	. "global"
 	"model"
+	"tools"
 )
 
 // 将一个节点加入树
@@ -23,7 +24,7 @@ func CreateNode(name, description string, userId, parentId int, opts ...interfac
 		switch len(opts) {
 		case 1:
 			node.CnName = opts[0].(string)
-			node.Key = getUuid()
+			node.Key = tools.GetUuid()
 		case 2:
 			node.CnName = opts[0].(string)
 			node.Key = opts[1].(string)
@@ -132,5 +133,6 @@ func AddNodeToNode(srcNodeId, tarNodeId interface{}, userId ...interface{}) erro
 	if srci && tari {
 		return rr.create()
 	}
+	casEdgeVersion()
 	return ERR_PERMISSION_DENY
 }

@@ -2,6 +2,7 @@ package cache
 
 import (
 	. "global"
+	"tools"
 )
 
 var (
@@ -11,7 +12,7 @@ var (
 
 	Tree        *TreeCache // 缓存所有节点的树
 	UserTreeLRU *LRU       // 缓存用户有权限节点的子树
-	ResourceLRU *LRU       // 缓存一个节点的关联图
+	ResourceLRU *LRU2      // 缓存资源与其他资源的关联图
 
 	NodePool = sync.Pool{
 		New: func() interface{} {
@@ -32,7 +33,9 @@ func init() {
 		UserTreeLRU = newLRU(Configs.UserCacheHead)
 	}
 	if ResourceLRU == nil {
-		ResourceLRU = newLRU(Config.ResourceCacheSize)
+		ResourceLRU = new(LRU2)
+		ResourceLRU.Cache1 = newLRU(Config.ResourceCacheSize)
+		ResourceLRU.Cache2 = newLRU(Config.GraphCacheSize)
 	}
 }
 
@@ -67,6 +70,7 @@ func (tc *TreeCache) Set(version int, data []*model.DBResourceTreeNode) error {
 	return nil
 }
 
+// 根据节点ID获取以该节点为root的子树
 func (tc *TreeCache) GetTreeNode(nodeId int) (*model.Tree, error) {
 	if nodeId > len(tc.Index) || tc.Index[nodeId] == nil {
 		return nil, ERR_NODE_NOT_EXIST
@@ -74,13 +78,8 @@ func (tc *TreeCache) GetTreeNode(nodeId int) (*model.Tree, error) {
 	return tc.Index[nodeId], nil
 }
 
-func (tc *TreeCache) Get(uid ...int) (*model.Tree, error) {
-	if len(uid) == 0 {
-		return tc.Tree, nil
-	}
-
-	// 根据用户删除没有权限的节点
-	return nil, nil
+func (tc *TreeCache) Get() (*model.Tree, error) {
+	return tc.Tree, nil
 }
 
 func (l *LRU) Set(key int, value interface{}) {
@@ -124,6 +123,29 @@ func (l *LRU) Get(key int) (interface{}, error) {
 	// 最新的数据，前一个节点是最旧的数据
 	l.Data.UserCacheHead = l.Data.UserCacheHead.Pre
 	return value.Val, nil
+}
+
+func (l2 *LRU2) Set(keys []int, value interface{}) {
+	if keys == nil || len(keys) == 0 {
+		return
+	}
+
+	l2.mux.Lock()
+	middleKey := tools.GetRandInt()
+	l2.Cache2.Set(middleKey, value)
+
+	for i := range keys {
+		l2.Cache1.Set(keys[i], middleKey)
+	}
+	l2.mux.Unlock()
+}
+
+func (l2 *LRU2) Get(key int) (interface{}, error) {
+	v1, err := l2.Cache1.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return l2.Cache2(v1.(int))
 }
 
 func NewTreeByPermission(permissionSet map[int]struct{}) (*model.Tree, error) {

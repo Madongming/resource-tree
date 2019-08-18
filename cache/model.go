@@ -2,6 +2,7 @@ package cache
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"model"
 )
@@ -24,7 +25,11 @@ type TreeCache struct {
 	ReVersion int
 }
 
-type GraphCache *model.Graph
+type LRU2 struct {
+	Cache1 *LRU
+	Cache2 *LRU
+	mux    sync.Mutex
+}
 
 type LRU struct {
 	Index map[int]*CacheNode

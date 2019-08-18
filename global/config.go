@@ -31,6 +31,7 @@ type ConfigFile struct {
 	Mysql             *MysqlFile `yaml:"mysql"`
 	UserCacheSize     int64      `yaml:"user_cache_size"`
 	ResourceCacheSize int64      `yaml:"resource_cache_size"`
+	GraphCacheSize    int64      `yaml:"graph_cache_size"`
 }
 
 type HttpFile struct {
@@ -59,6 +60,7 @@ type Config struct {
 	Mysql             *Mysql
 	UserCacheSize     int64
 	ResourceCacheSize int64
+	GraphCacheSize    int64
 }
 
 type Http struct {
@@ -133,5 +135,6 @@ func initConfig() {
 		},
 		UserCacheSize:     configFile.UserCacheSize,
 		ResourceCacheSize: configFile.ResourceCacheSize,
+		GraphCacheSize:    configFile.GraphCacheSize,
 	}
 }

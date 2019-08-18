@@ -16,7 +16,7 @@ func getCurrentVersion() (int, error) {
 	var version int64
 Retry:
 	if err := DB().
-		Raw("SELECT current FROM version WHERE id = 1").
+		Raw("SELECT current FROM node_versions WHERE id = 1").
 		Scan(&version).
 		Error; err != nil {
 		return int64(0), err
@@ -35,7 +35,7 @@ Retry:
 	}
 
 	if DB().
-		Exec("UPDATE version "+
+		Exec("UPDATE node_versions "+
 			"set current = current + 1 "+
 			"WHERE id = 1 and current = ?",
 			version).RowsAffected == int64(0) {
@@ -60,6 +60,38 @@ func casResource() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func getCurrentEdgeVersion() (int, error) {
+	var version int64
+Retry:
+	if err := DB().
+		Raw("SELECT current FROM edge_versions WHERE id = 1").
+		Scan(&version).
+		Error; err != nil {
+		return int64(0), err
+	}
+	return int(version), nil
+}
+
+func casEdgeVersion() error {
+	// select current as c from version where id = 1;
+	// update current set current = current + 1 where id = 1 and current = c;
+
+Retry:
+	version, err := getCurrentEdgeVersion()
+	if err != nil {
+		return err
+	}
+
+	if DB().
+		Exec("UPDATE edge_versions "+
+			"set current = current + 1 "+
+			"WHERE id = 1 and current = ?",
+			version).RowsAffected == int64(0) {
+		goto Retry
+	}
+	return nil
 }
 
 // Fetch all node of the tree. For be used by cache model.
@@ -488,6 +520,59 @@ func (rr *DBResourceRelationship) delete() error {
 	return DB().Delete(rr).Error
 }
 
+// 获取指定节点的所有相关节点ID
+func getAllRelationshipEdges(nodeId interface{}) ([]*ResourceEdge, error) {
+	var rrs []*DBResourceRelationship
+	if result := DB().
+		Where("`source_resource_node_id` = ? OR"+
+			"`target_desource_node_id = ?`",
+			nodeId, nodeId).
+		Find(&rrs); result.Error != nil {
+		if result.RecordNotFound() {
+			return []*ResourceEdge{}, nil
+		}
+		return nil, err
+	}
+	var results []*ResourceEdge
+	for i := range rrs {
+		results = append(results,
+			&ResourceEdge{
+				Source: rrs.SourceResourceNodeID,
+				Target: rrs.SourceResourceNodeID,
+			})
+	}
+	return results, nil
+}
+
+// 获取边列表中的所有节点
+func getAllRelationshipNodes(rrs []*ResourceEdge) ([]*ResourceNode, error) {
+	// 最多2倍的ID个数
+	tmp := make(map[int]struct{}, len(rrs)*2)
+	for i := range rrs {
+		tmp[rrs.Source] = struct{}{}
+		tmp[rrs.Target] = struct{}{}
+	}
+
+	casResource()
+	index := makeResourceIndex(cache.ResourceNodes.Data)
+	var results []*ResourceNode
+	for k, _ := range tmp {
+		results = append(results,
+			index[k])
+	}
+	return results, nil
+}
+
+// 制作缓存中节点数据的索引
+func makeResourceIndex(data []*model.ResourceNode) []*model.ResourceNode {
+	indexLen := data[len(data)-1].ID + 1
+	index := make([]*model.ResourceNode, indexLen)
+	for i := range data {
+		index[data[i].ID] = data[i]
+	}
+	return index
+}
+
 func deleteNodeById(nodeId interface{}) error {
 	return DB().
 		Delete(DBResourceNode{},
@@ -502,13 +587,4 @@ func deleteResourceRelationshipByNodeId(nodeId interface{}) error {
 				"target_resource_node_id = ?",
 			nodeId, nodeId).
 		Error
-}
-
-func getUuid() string {
-RETRY_UUID:
-	id, err := uuid.NewV4()
-	if err != nil {
-		goto RETRY_UUID
-	}
-	return id.String()
 }
