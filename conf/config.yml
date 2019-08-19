@@ -1,0 +1,25 @@
+---
+test: &test
+  log: 'test.xml'
+  external_address: 'devops.sample.com'
+  http:
+    host: '0.0.0.0'
+    port: 8080
+    read_timeout: '30s'
+    write_timeout: '30s'
+  mysql:
+    user: 'root'
+    pass: '123456'
+    db: 'resource'
+    protocol: 'tcp'
+    address: '127.0.0.1'
+    params: 'collation=utf8_general_ci&parseTime=true&readTimeout=3s&timeout=3s&writeTimeout=3s'
+    max_open_conns: 100
+    max_idle_conns: 50
+  user_cache_size: 100
+  resource_cache_size: 1000
+  graph_cache_size: 5
+
+debug: *test
+
+release: *test

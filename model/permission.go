@@ -8,20 +8,22 @@ import (
 
 // DB recorder.
 type DBUserPermission struct {
+	ID            int `gorm:"primary_key"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ReadWriteMask uint // See Last
-	NodeID        int  `gorm:"primary_key"`
-	UserID        int  `gorm:"primary_key"`
+	NodeID        int  `gorm:"index"`
+	UserID        int  `gorm:"index"`
 }
 
 // DB recorder.
 type DBGroupPermission struct {
+	ID            int `gorm:"primary_key"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ReadWriteMask uint // See Last
-	NodeID        int  `gorm:"primary_key"`
-	GroupID       int  `gorm:"primary_key"`
+	NodeID        int  `gorm:"index"`
+	GroupID       int  `gorm:"index"`
 }
 
 func (gn *DBGroupPermission) Create() error {

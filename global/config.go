@@ -81,7 +81,10 @@ type Mysql struct {
 }
 
 func initConfig() {
-	cfgFile := path.Join(filepath.Dir(os.Args[0]), "../etc/config.yml")
+	cfgFile := os.Getenv("CONFIG_FILE")
+	if cfgFile == "" {
+		cfgFile = path.Join(filepath.Dir(os.Args[0]), "../etc/config.yml")
+	}
 	if _, err := os.Stat(cfgFile); err != nil {
 		fmt.Fprintf(os.Stderr, "No suitable config file %s, %v", cfgFile, err)
 		os.Exit(1)

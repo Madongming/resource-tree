@@ -30,8 +30,12 @@ if [ $? -ne 0 ];then
     exit $SI
 fi
 
+# Set env
+export CONFIG_FILE="/Users/madongming/Documents/GITREPO/mdm/resource-tree/conf/config.yml"
+export LOG_CONFIG_FILE="/Users/madongming/Documents/GITREPO/mdm/resource-tree/conf/test.xml"
+
 # 开始测试
-go test ./...
+go test -v ./...
 
 # 停止mysql
-docker kill mysql
+#docker kill mysql

@@ -1,0 +1,38 @@
+<seelog type="asynctimer" asyncinterval="5000000" minlevel="trace" maxlevel="critical">
+    <outputs formatid="main">
+        <buffered size="10000" flushperiod="1000">
+            <rollingfile type="date" filename="../../log/trace.log" datepattern="2006.01.02" maxrolls="3"/>
+        </buffered>
+        <filter levels="debug, info, warn, error, critical">
+            <buffered size="10000" flushperiod="1000">
+                <rollingfile type="date" filename="../../log/debug.log" datepattern="2006.01.02" maxrolls="3"/>
+            </buffered>
+            <filter levels="info, warn, error, critical">
+                <buffered size="10000" flushperiod="1000">
+                    <rollingfile type="date" filename="../../log/info.log" datepattern="2006.01.02" maxrolls="3"/>
+                </buffered>
+                <filter levels="warn, error, critical">
+                    <buffered size="10000" flushperiod="1000">
+                        <rollingfile type="date" filename="../../log/warn.log" datepattern="2006.01.02"
+                                     maxrolls="3"/>
+                    </buffered>
+                    <filter levels="error, critical">
+                        <buffered size="10000" flushperiod="1000">
+                            <rollingfile type="date" filename="../../log/error.log" datepattern="2006.01.02"
+                                         maxrolls="2"/>
+                        </buffered>
+                        <filter levels="critical">
+                            <buffered size="10000" flushperiod="1000">
+                                <rollingfile type="date" filename="../../log/critical.log" datepattern="2006.01.02"
+                                             maxrolls="2"/>
+                            </buffered>
+                        </filter>
+                    </filter>
+                </filter>
+            </filter>
+        </filter>
+    </outputs>
+    <formats>
+        <format id="main" format="%Date(2006 Jan 02/3:04:05.000000000 PM MST) [%Level] [%File:%Line] %Msg%n"/>
+    </formats>
+</seelog>

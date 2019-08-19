@@ -26,10 +26,11 @@ type DBGroup struct {
 
 // DB recorder.
 type DBUserGroup struct {
+	ID        int `gorm:"primary_key"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	UserID    int `gorm:"primary_key"`
-	GroupID   int `gorm:"primary_key"`
+	UserID    int `gorm:"index"`
+	GroupID   int `gorm:"index"`
 }
 
 func (u *DBUser) Create() error {
