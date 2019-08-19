@@ -1,8 +1,7 @@
-package model
+package dao
 
 import (
-	"cache"
-	. "global"
+	. "github.com/Madongming/resource-tree/global"
 )
 
 // 更新节点名称，可选参数同于权限验证。如果想验证则传入userid
@@ -36,8 +35,8 @@ func UpdataUserNodePermissions(userId, nodeId interface{}, permissions int) erro
 	} else if userPermission == nil {
 		return nil
 	}
-	userPermission.ReadWriteMask = permissions
-	return userPermission.update()
+	userPermission.ReadWriteMask = uint(permissions)
+	return userPermission.Update()
 }
 
 func UpdataGroupNodePermissions(groupId, nodeId interface{}, permissions int) error {
@@ -47,6 +46,6 @@ func UpdataGroupNodePermissions(groupId, nodeId interface{}, permissions int) er
 	} else if groupPermission == nil {
 		return nil
 	}
-	groupPermission.ReadWriteMask = permissions
-	return groupPermission.update()
+	groupPermission.ReadWriteMask = uint(permissions)
+	return groupPermission.Update()
 }

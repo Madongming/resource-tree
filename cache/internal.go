@@ -1,17 +1,17 @@
 package cache
 
 import (
-	"model"
+	"github.com/Madongming/resource-tree/model"
 )
 
 func newLRU(size int64) *LRU {
-	lru = new(LRU)
+	lru := new(LRU)
 	lru.Index = make(map[int]*CacheNode, size)
 
 	// Make double link.
 	dummy := new(CacheNode)
 	p := dummy
-	for i := 0; i < size; i++ {
+	for i := 0; i < int(size); i++ {
 		node := new(CacheNode)
 		p.Next = node
 		node.Pre = p
@@ -22,8 +22,9 @@ func newLRU(size int64) *LRU {
 	lru.Data = &CacheList{
 		UserCacheHead: dummy.Next,
 		Size:          size,
-		Mux:           sync.Mutex{},
 	}
+
+	return lru
 }
 
 // 设置缓存正在重新索引或完成索引
@@ -43,20 +44,20 @@ func (rn *ResourceNodeList) perMallocReData(dataLen int) {
 	if rn.ReData == nil {
 		// 第一次更新
 		rn.ReData = make([]*model.ResourceNode, dataLen)
-		for i := range Cache.ReData {
+		for i := range rn.ReData {
 			// 从池子中取对象
 			rn.ReData[i] = NodePool.Get().(*model.ResourceNode)
 		}
-	} else if len(Cache.ReData) != dataLen {
+	} else if len(rn.ReData) != dataLen {
 		// 对象个数有变化
 		// 将对象放回池子
 		for i := range rn.ReData {
 			NodePool.Put(rn.ReData[i])
 		}
 		rn.ReData = make([]*model.ResourceNode, dataLen)
-		for i := range Cache.Data {
+		for i := range rn.Data {
 			// 从池子中取对象
-			rn.ReData[i] = TreeNodePool.Get().(*model.ResourceNode)
+			rn.ReData[i] = NodePool.Get().(*model.ResourceNode)
 		}
 	}
 	// 以上都未匹配，可以直接复用
@@ -64,7 +65,7 @@ func (rn *ResourceNodeList) perMallocReData(dataLen int) {
 
 func (tc *TreeCache) makeTree() error {
 	// 最大id + 1，做为索引长度
-	indexLen := ResourceNodes.ReData[len(c.ReData)-1].ID + 1
+	indexLen := ResourceNodes.ReData[len(ResourceNodes.ReData)-1].ID + 1
 	// 利用父ID建立树形索引
 	// 第二个参数为了防止动态扩充索引切片
 	err := tc.makeArray2Tree(indexLen)
@@ -79,7 +80,7 @@ func (tc *TreeCache) makeTree() error {
 	return nil
 }
 
-func (rn *ResourceNodeList) changeModel2Resource(nodes []*model.ResourceTreeNode) {
+func (rn *ResourceNodeList) changeModel2Resource(nodes []*model.DBResourceNode) {
 	if nodes == nil || len(nodes) == 0 {
 		return
 	}
@@ -96,7 +97,9 @@ func (rn *ResourceNodeList) changeModel2Resource(nodes []*model.ResourceTreeNode
 }
 
 func (tc *TreeCache) makeArray2Tree(indexLen int) error {
-	if indexLen == 0 || ResourceNodes.ReData == nil || len(ResourceNodes.ReData) == 0 {
+	if indexLen == 0 ||
+		ResourceNodes.ReData == nil ||
+		len(ResourceNodes.ReData) == 0 {
 		return nil
 	}
 
@@ -105,24 +108,29 @@ func (tc *TreeCache) makeArray2Tree(indexLen int) error {
 	for i := range ResourceNodes.ReData {
 		parentIndex[ResourceNodes.
 			ReData[i].
-			Parent] = append(
-			ResourceNodes.
-				ReData[ResourceNodes.
-				ReData[i].
-				Parent],
+			Parent] = append(parentIndex[ResourceNodes.
+			ReData[i].
+			Parent],
 			ResourceNodes.ReData[i])
 	}
 
 	// 虚拟Root
 	tc.ReTree = new(model.Tree)
-	tc.ReTree.Parent = -1
+	tc.ReTree.Node = new(model.ResourceNode)
+	tc.ReTree.Node.Parent = -1
 
 	makeTree(tc.ReTree, parentIndex)
 	return nil
 }
 
 func makeTree(root *model.Tree, parentIndex [][]*model.ResourceNode) {
-	root.Childs = parentIndex[root.Node.ID]
+	childs := parentIndex[root.Node.ID]
+	for i := range childs {
+		root.Childs = append(root.Childs,
+			&model.Tree{
+				Node: childs[i],
+			})
+	}
 	if root.Childs == nil || len(root.Childs) == 0 {
 		return
 	}
@@ -138,7 +146,6 @@ func (tc *TreeCache) makeTreeIndex(indexLen int) {
 	}
 	tc.ReIndex = make([]*model.Tree, indexLen)
 	makeIndex(tc.ReTree, tc.ReIndex)
-	return index
 }
 
 func makeIndex(tree *model.Tree, index []*model.Tree) {
@@ -197,7 +204,7 @@ func changeHeadPreAndUpNode(headPreNode,
 }
 
 func newTreeByPermission(tree, newTree *model.Tree, permissionSet map[int]struct{}) {
-	if _, found := permissionSet[tree.ID]; found {
+	if _, found := permissionSet[tree.Node.ID]; found {
 		// 找到有权限的节点，将其及子节点都加入树
 		newTree.Childs = append(newTree.Childs,
 			tree)
@@ -207,6 +214,6 @@ func newTreeByPermission(tree, newTree *model.Tree, permissionSet map[int]struct
 		return
 	}
 	for i := range tree.Childs {
-		newTreeByPermission(tree.Childs[i], newTree)
+		newTreeByPermission(tree.Childs[i], newTree, permissionSet)
 	}
 }

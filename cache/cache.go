@@ -1,8 +1,11 @@
 package cache
 
 import (
-	. "global"
-	"tools"
+	"sync"
+
+	. "github.com/Madongming/resource-tree/global"
+	"github.com/Madongming/resource-tree/model"
+	"github.com/Madongming/resource-tree/tools"
 )
 
 var (
@@ -30,17 +33,17 @@ func init() {
 		Tree = new(TreeCache)
 	}
 	if UserTreeLRU == nil {
-		UserTreeLRU = newLRU(Configs.UserCacheHead)
+		UserTreeLRU = newLRU(Configs.UserCacheSize)
 	}
 	if ResourceLRU == nil {
 		ResourceLRU = new(LRU2)
-		ResourceLRU.Cache1 = newLRU(Config.ResourceCacheSize)
-		ResourceLRU.Cache2 = newLRU(Config.GraphCacheSize)
+		ResourceLRU.Cache1 = newLRU(Configs.ResourceCacheSize)
+		ResourceLRU.Cache2 = newLRU(Configs.GraphCacheSize)
 	}
 }
 
-func (tc *TreeCache) Set(version int, data []*model.DBResourceTreeNode) error {
-	if tc.Resource.IsReData {
+func (tc *TreeCache) Set(version int, data []*model.DBResourceNode) error {
+	if IsReData {
 		return ERR_RE_INDEX
 	}
 
@@ -53,7 +56,7 @@ func (tc *TreeCache) Set(version int, data []*model.DBResourceTreeNode) error {
 	ResourceNodes.perMallocReData(len(data))
 
 	// 将从数据库取出的节点转成缓存里的节点.
-	ResourceNodes.changeModel2Resource(nodes)
+	ResourceNodes.changeModel2Resource(data)
 	// 在重新索引的数据集上产生树和id索引
 	if err := tc.makeTree(); err != nil {
 		// 失败，提前结束
@@ -145,11 +148,15 @@ func (l2 *LRU2) Get(key int) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return l2.Cache2(v1.(int))
+	key2, ok := v1.(int)
+	if !ok {
+		return nil, ERR_ASSERTION
+	}
+	return l2.Cache2.Get(key2)
 }
 
 func NewTreeByPermission(permissionSet map[int]struct{}) (*model.Tree, error) {
 	newTree := new(model.Tree)
-	newTreeByPermission(Tree, newTree, permissionSet)
+	newTreeByPermission(Tree.Tree, newTree, permissionSet)
 	return newTree, nil
 }

@@ -2,26 +2,42 @@ package model
 
 import (
 	"time"
+
+	. "github.com/Madongming/resource-tree/global"
 )
 
 // DB recorder.
-type DBUserTreePermission struct {
-	ID            int `gorm:"primary_key"`
+type DBUserPermission struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ReadWriteMask uint // See Last
-	NodeID        int
-	UserID        int
+	NodeID        int  `gorm:"primary_key"`
+	UserID        int  `gorm:"primary_key"`
 }
 
 // DB recorder.
 type DBGroupPermission struct {
-	ID            int `gorm:"primary_key"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	ReadWriteMask uint // See Last
-	NodeID        int
-	GroupID       int
+	NodeID        int  `gorm:"primary_key"`
+	GroupID       int  `gorm:"primary_key"`
+}
+
+func (gn *DBGroupPermission) Create() error {
+	return DB().Create(gn).Error
+}
+
+func (un *DBUserPermission) Create() error {
+	return DB().Create(un).Error
+}
+
+func (gp *DBGroupPermission) Update() error {
+	return DB().Save(gp).Error
+}
+
+func (up *DBUserPermission) Update() error {
+	return DB().Save(up).Error
 }
 
 // About the ReadWriteMask

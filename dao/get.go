@@ -3,9 +3,9 @@ package dao
 import (
 	"strings"
 
-	"cache"
-	. "global"
-	"model"
+	"github.com/Madongming/resource-tree/cache"
+	. "github.com/Madongming/resource-tree/global"
+	"github.com/Madongming/resource-tree/model"
 )
 
 // 获取组内的所有用户
@@ -61,8 +61,8 @@ func GetTreeNodeUsers(nodeId interface{}) ([]*model.DBUser, error) {
 }
 
 // 获取节点有权限的组，只有是显示设定，而不是继承来的才有显示。
-func GetTreeNodeGroups(groupId interface{}) ([]*model.DBGroup, error) {
-	var permissions []*model.GroupPermission
+func GetTreeNodeGroups(nodeId interface{}) ([]*model.DBGroup, error) {
+	var permissions []*model.DBGroupPermission
 	if result := DB().
 		Where("`node_id` = ?", nodeId).
 		Find(&permissions); result.Error != nil {
@@ -114,15 +114,22 @@ SET_CACHE_AND_RETURN:
 
 // 获取指定节点的图
 func GetNodeGraph(nodeId interface{}) (*model.Graph, error) {
+	version, err := getCurrentEdgeVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	if value, err := cache.ResourceLRU.Get(nodeId.(int)); err == nil {
-		// 从缓存中取
-		return value.(*model.Graph), nil
+		if version == cache.ResourceLRU.Version {
+			// 从缓存中取
+			return value.(*model.Graph), nil
+		}
 	}
 	rrs, err := getAllRelationshipEdges(nodeId)
 	if err != nil {
 		return nil, err
 	}
-	if len(rss) == 0 {
+	if len(rrs) == 0 {
 		return nil, nil
 	}
 
@@ -134,12 +141,13 @@ func GetNodeGraph(nodeId interface{}) (*model.Graph, error) {
 	// 写入缓存
 	keys := make([]int, len(nodes))
 	for i := range nodes {
-		keys[i] = nodes[i]
+		keys[i] = nodes[i].ID
 	}
 	graph := &model.Graph{
 		Nodes: nodes,
 		Edges: rrs,
 	}
+	cache.ResourceLRU.Version = version
 	cache.ResourceLRU.Set(keys, graph)
 	return graph, nil
 }
@@ -162,8 +170,4 @@ func GetGroupPermission(groupId, nodeId int) (int64, error) {
 	}
 
 	return int64(permission.ReadWriteMask), nil
-}
-
-func GetGraphByNodeId(nodeId interface{}) (*model.Graph, error) {
-
 }

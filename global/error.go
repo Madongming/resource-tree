@@ -11,4 +11,5 @@ var (
 	ERR_RE_INDEX            = errors.New("The data is running reindex.")
 	ERR_NODE_LEVEL_IS_ZERO  = errors.New("Node 's level must be not  zero.")
 	ERR_PERMISSION_DENY     = errors.New("Permission deny.")
+	ERR_ASSERTION           = errors.New("Assertion error.")
 )

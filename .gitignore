@@ -25,3 +25,7 @@
 /bin
 /output
 /log
+
+# go module
+go.mod
+go.sum

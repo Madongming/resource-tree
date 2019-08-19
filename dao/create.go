@@ -1,9 +1,9 @@
 package dao
 
 import (
-	. "global"
-	"model"
-	"tools"
+	. "github.com/Madongming/resource-tree/global"
+	"github.com/Madongming/resource-tree/model"
+	"github.com/Madongming/resource-tree/tools"
 )
 
 // 将一个节点加入树
@@ -19,7 +19,7 @@ func CreateNode(name, description string, userId, parentId int, opts ...interfac
 	// opts 0: cn_name, 1: key, 2: user permission, 3: group id, 4, group permission.
 	if opts == nil || len(opts) == 0 {
 		node.CnName = name
-		node.Key = getUuid()
+		node.Key = tools.GetUuid()
 	} else {
 		switch len(opts) {
 		case 1:
@@ -55,7 +55,7 @@ func CreateNode(name, description string, userId, parentId int, opts ...interfac
 		}
 		node.Level = parentNode.Level + 1
 	}
-	if err := node.create(); err != nil {
+	if err := node.Create(); err != nil {
 		return err
 	}
 
@@ -82,7 +82,7 @@ func AddUser(name, cnName string) error {
 }
 
 // Create a group.
-func CreateGroup(name, CnName string) error {
+func CreateGroup(name, cnName string) error {
 	return createGroup(name, cnName)
 }
 
@@ -114,24 +114,24 @@ func AddGroupToNode(groupId interface{}, nodeId int, permissions ...int) error {
 }
 
 // 加入一条资源的管理关系，可选参数userId如果传入，则判断两个节点是否都有权限
-func AddNodeToNode(srcNodeId, tarNodeId interface{}, userId ...interface{}) error {
-	rr := new(DBResourceRelationship)
-	rr.Source = srcNodeId.(int)
-	rr.Target = tarNodeId.(int)
+func AddNodeToNode(srcNodeId, tarNodeId interface{}, userId ...int) error {
+	rr := new(model.DBResourceRelationship)
+	rr.SourceResourceNodeID = srcNodeId.(int)
+	rr.TargetResourceNodeID = tarNodeId.(int)
 	if userId == nil || len(userId) == 0 {
-		return rr.create()
+		return rr.Create()
 	}
 
-	srci, err := isUserHaveOneNodePermisson(userId[0], srcNodeId)
+	srci, err := isUserHasNodePermission(userId[0], srcNodeId.(int))
 	if err != nil {
 		return err
 	}
-	tari, err := isUserHaveOneNodePermisson(userId[0], tarNodeId)
+	tari, err := isUserHasNodePermission(userId[0], tarNodeId.(int))
 	if err != nil {
 		return err
 	}
 	if srci && tari {
-		return rr.create()
+		return rr.Create()
 	}
 	casEdgeVersion()
 	return ERR_PERMISSION_DENY

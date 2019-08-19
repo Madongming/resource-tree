@@ -6,13 +6,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
 
-	"tools"
+	"github.com/Madongming/resource-tree/tools"
 )
 
 var Configs *Config

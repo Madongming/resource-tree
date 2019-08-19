@@ -8,11 +8,12 @@ import (
 )
 
 func GetUuid() string {
-RETRY_UUID:
-	id, err := uuid.NewV4()
-	if err != nil {
-		goto RETRY_UUID
-	}
+	//RETRY_UUID:
+	//id, err := uuid.NewV4()
+	//if err != nil {
+	//	goto RETRY_UUID
+	//}
+	id := uuid.NewV4()
 	return id.String()
 }
 

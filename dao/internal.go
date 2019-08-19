@@ -5,21 +5,19 @@ import (
 
 	log "github.com/cihub/seelog"
 
-	"github.com/satori/go.uuid"
-
-	"cache"
-	. "global"
-	"model"
+	"github.com/Madongming/resource-tree/cache"
+	. "github.com/Madongming/resource-tree/global"
+	"github.com/Madongming/resource-tree/model"
 )
 
 func getCurrentVersion() (int, error) {
 	var version int64
-Retry:
+
 	if err := DB().
 		Raw("SELECT current FROM node_versions WHERE id = 1").
 		Scan(&version).
 		Error; err != nil {
-		return int64(0), err
+		return 0, err
 	}
 	return int(version), nil
 }
@@ -48,7 +46,7 @@ func casResource() (bool, error) {
 	version, err := getCurrentVersion()
 	if err != nil {
 		return false, err
-	} else if cache.IsReData || (cache.Tree != nil && cache.Tree.Resource.Version == version) {
+	} else if cache.IsReData || (cache.Tree != nil && cache.Tree.Version == version) {
 		// 如果资源正在重建，或者当前资源的版本未更新，则跳过更新资源。
 		return false, nil
 	}
@@ -64,12 +62,12 @@ func casResource() (bool, error) {
 
 func getCurrentEdgeVersion() (int, error) {
 	var version int64
-Retry:
+
 	if err := DB().
 		Raw("SELECT current FROM edge_versions WHERE id = 1").
 		Scan(&version).
 		Error; err != nil {
-		return int64(0), err
+		return 0, err
 	}
 	return int(version), nil
 }
@@ -136,51 +134,51 @@ func getNodeById(nodeId interface{}) (*model.DBResourceNode, error) {
 }
 
 func createUser(name, cnName string) error {
-	user := &User{
+	user := &model.DBUser{
 		Name:   name,
 		CnName: cnName,
 	}
 
-	return user.create()
+	return user.Create()
 }
 
 func createGroup(name, cnName string) error {
-	group := &Group{
+	group := &model.DBGroup{
 		Name:   name,
 		CnName: cnName,
 	}
 
-	return group.create()
+	return group.Create()
 }
 
 func addUserToGroup(userId, groupId interface{}) error {
-	ug := &UserGroup{
+	ug := &model.DBUserGroup{
 		UserID:  userId.(int),
 		GroupID: groupId.(int),
 	}
-	return ug.create()
+	return ug.Create()
 }
 
 func addUserToNode(userId, nodeId interface{}, permission int) error {
-	un := &UserPermission{
-		ReadWriteMask: permission,
+	un := &model.DBUserPermission{
+		ReadWriteMask: uint(permission),
 		NodeID:        nodeId.(int),
 		UserID:        userId.(int),
 	}
-	return un.create()
+	return un.Create()
 }
 
 func addGroupToNode(groupId, nodeId interface{}, permission int) error {
-	gn := &UserPermission{
-		ReadWriteMask: permission,
+	gn := &model.DBGroupPermission{
+		ReadWriteMask: uint(permission),
 		NodeID:        nodeId.(int),
 		GroupID:       groupId.(int),
 	}
-	return gn.create()
+	return gn.Create()
 }
 
-func getUserById(id interface{}) (*DBUser, error) {
-	user := new(DBUser)
+func getUserById(id interface{}) (*model.DBUser, error) {
+	user := new(model.DBUser)
 	if result := DB().
 		First(user); result.Error != nil {
 		if result.RecordNotFound() {
@@ -191,8 +189,8 @@ func getUserById(id interface{}) (*DBUser, error) {
 	return user, nil
 }
 
-func getUsersByIds(ids []int) ([]*DBUser, error) {
-	var users []*DBUser
+func getUsersByIds(ids []int) ([]*model.DBUser, error) {
+	var users []*model.DBUser
 	if ids == nil || len(ids) == 0 {
 		return nil, nil
 	}
@@ -217,8 +215,8 @@ func getUsersByIds(ids []int) ([]*DBUser, error) {
 	return users, nil
 }
 
-func getGroupById(id interface{}) (*DBGroup, error) {
-	group := new(DBGroup)
+func getGroupById(id interface{}) (*model.DBGroup, error) {
+	group := new(model.DBGroup)
 	if result := DB().
 		First(group); result.Error != nil {
 		if result.RecordNotFound() {
@@ -229,8 +227,8 @@ func getGroupById(id interface{}) (*DBGroup, error) {
 	return group, nil
 }
 
-func getGroupsByIds(ids []int) ([]*DBGroup, error) {
-	var groups []*DBGroup
+func getGroupsByIds(ids []int) ([]*model.DBGroup, error) {
+	var groups []*model.DBGroup
 	if ids == nil || len(ids) == 0 {
 		return nil, nil
 	}
@@ -255,8 +253,8 @@ func getGroupsByIds(ids []int) ([]*DBGroup, error) {
 	return groups, nil
 }
 
-func getUserByName(name string) (*DBUser, error) {
-	user := new(DBUser)
+func getUserByName(name string) (*model.DBUser, error) {
+	user := new(model.DBUser)
 	if result := DB().
 		Where("`name` = ?", name).
 		First(user); result.Error != nil {
@@ -268,13 +266,13 @@ func getUserByName(name string) (*DBUser, error) {
 	return user, nil
 }
 
-func getUserGroups(userId interface{}) ([]*DBGroup, error) {
-	var userGroups []*DBUserGroup
+func getUserGroups(userId interface{}) ([]*model.DBGroup, error) {
+	var userGroups []*model.DBUserGroup
 	if result := DB().
-		Where("`group_id` = ?", groupId).
+		Where("`user_id` = ?", userId).
 		Find(userGroups); result.Error != nil {
 		if result.RecordNotFound() {
-			return []*Group{}, nil
+			return []*model.DBGroup{}, nil
 		}
 		return nil, result.Error
 	}
@@ -286,7 +284,7 @@ func getUserGroups(userId interface{}) ([]*DBGroup, error) {
 		groupQuery[i] = "?"
 	}
 
-	var groups []*DBGroup
+	var groups []*model.DBGroup
 	if result := DB().
 		Where("`id` in ("+
 			strings.Join(groupQuery, ",")+
@@ -300,8 +298,8 @@ func getUserGroups(userId interface{}) ([]*DBGroup, error) {
 	return groups, nil
 }
 
-func getNodeUserPermission(userId, nodeId interface{}) (*DBUserPermission, error) {
-	userPermission := new(DBUserPermission)
+func getNodeUserPermission(userId, nodeId interface{}) (*model.DBUserPermission, error) {
+	userPermission := new(model.DBUserPermission)
 	if result := DB().
 		Where("`user_id` = ? AND "+
 			"`node_id` = ?",
@@ -315,8 +313,8 @@ func getNodeUserPermission(userId, nodeId interface{}) (*DBUserPermission, error
 	return userPermission, nil
 }
 
-func getNodeGroupPermission(groupId, nodeId interface{}) (*DBGroupPermission, error) {
-	groupPermission := new(DBGroupPermission)
+func getNodeGroupPermission(groupId, nodeId interface{}) (*model.DBGroupPermission, error) {
+	groupPermission := new(model.DBGroupPermission)
 	if result := DB().
 		Where("`group_id` = ? AND "+
 			"`node_id` = ?",
@@ -331,7 +329,7 @@ func getNodeGroupPermission(groupId, nodeId interface{}) (*DBGroupPermission, er
 }
 
 func getGroupNodeIds(groupId interface{}) ([]int, error) {
-	var groupPermissions []*DBGroupPermission
+	var groupPermissions []*model.DBGroupPermission
 	if result := DB().
 		Where("`group_id` = ?", groupId).
 		Find(&groupPermissions); result.Error != nil {
@@ -344,11 +342,11 @@ func getGroupNodeIds(groupId interface{}) ([]int, error) {
 	for i := range groupPermissions {
 		nodeIds[i] = groupPermissions[i].NodeID
 	}
-	return nodeIds
+	return nodeIds, nil
 }
 
 func getUserNodeIds(userId interface{}) ([]int, error) {
-	var userPermissions []*DBUserPermission
+	var userPermissions []*model.DBUserPermission
 	if result := DB().
 		Where("`user_id` = ?", userId).
 		Find(&userPermissions); result.Error != nil {
@@ -361,10 +359,10 @@ func getUserNodeIds(userId interface{}) ([]int, error) {
 	for i := range userPermissions {
 		nodeIds[i] = userPermissions[i].NodeID
 	}
-	return nodeIds
+	return nodeIds, nil
 }
 
-func getGroupsNodeIds(groups []*DBGroup) ([]int, error) {
+func getGroupsNodeIds(groups []*model.DBGroup) ([]int, error) {
 	if groups == nil || len(groups) == 0 {
 		return []int{}, nil
 	}
@@ -375,16 +373,16 @@ func getGroupsNodeIds(groups []*DBGroup) ([]int, error) {
 		queryArray[i] = "?"
 	}
 
-	var groupPermissions []*DBGroupPermission
+	var groupPermissions []*model.DBGroupPermission
 	if result := DB().
-		Where("`group_id` in (" +
-			strings.Join(queryArray, ","+
-				")", groupIds...)).
+		Where("`group_id` in ("+
+			strings.Join(queryArray, ",")+
+			")", groupIds...).
 		Find(&groupPermissions); result.Error != nil {
 		if result.RecordNotFound() {
 			return []int{}, nil
 		}
-		return nil, err
+		return nil, result.Error
 	}
 	nodeIds := make([]int, len(groupPermissions))
 	for i := range groupPermissions {
@@ -394,7 +392,7 @@ func getGroupsNodeIds(groups []*DBGroup) ([]int, error) {
 }
 
 // 获取user以及其所在组的所有可读节点，用map当set来使用
-func getUserNodes(userId int) (map[int]struct{}, error) {
+func getUserNodes(userId interface{}) (map[int]struct{}, error) {
 	groups, err := getUserGroups(userId)
 	if err != nil {
 		return nil, err
@@ -428,15 +426,21 @@ func isUserHasNodePermission(userId, nodeId interface{}) (bool, error) {
 
 // 获取一个节点从下至上到root的所有节点
 func findAllNodesToRoot(nodeId interface{}) []interface{} {
-	node, _ := cache.GetTreeNode(nodeId)
-	if node == nil || node.Level == 0 {
+	id, ok := nodeId.(int)
+	if !ok {
+		log.Error(ERR_ASSERTION)
+	}
+	node, _ := cache.Tree.GetTreeNode(id)
+	if node == nil ||
+		node.Node == nil ||
+		node.Node.Level == 0 {
 		return []interface{}{}
 	}
-	permissions := make([]interface{}, node.Level)
-	for tn := node; tn.Parent != 0; {
+	permissions := make([]interface{}, node.Node.Level)
+	for tn := node; tn.Node.Parent != 0; {
 		permissions = append(permissions,
-			tn.ID)
-		tp, err := cache.GetTreeNode(tn.Parent)
+			tn.Node.ID)
+		tp, err := cache.Tree.GetTreeNode(tn.Node.Parent)
 		if err != nil {
 			return []interface{}{}
 		}
@@ -460,102 +464,44 @@ func isUserHaveOneNodePermisson(userId interface{}, nodeIds []interface{}) (bool
 	return false, nil
 }
 
-func (n *model.DBResourceNode) create() error {
-	return DB().Create(n).Error
-}
-
-func (n *model.DBResourceNode) update() error {
-	return DB().Update(n).Error
-}
-
-func (n *model.DBResourceNode) delete() error {
-	return DB().Delete(n).Error
-}
-
-func (u *model.DBUser) create() error {
-	return DB().Create(u).Error
-}
-
-func (g *model.DBGroup) create() error {
-	return DB().Create(g).Error
-}
-
-func (ug *DBUserGroup) create() error {
-	return DB().Create(ug).Error
-}
-
-func (gn *model.DBGroupPermission) create() error {
-	return DB().Create(gn).Error
-}
-
-func (un *DBUserPermission) create() error {
-	return DB().Create(un).Error
-}
-
-func (u *DBUser) update() error {
-	return DB().Save(u).Error
-}
-
-func (g *DBGroup) update() error {
-	return DB().Save(g).Error
-}
-
-func (ug *DBUserGroup) update() error {
-	return DB().Save(ug).Error
-}
-
-func (gp *DBGroupPermission) update() error {
-	return DB().Save(gp).Error
-}
-
-func (up *DBUserPermission) update() error {
-	return DB().Save(up).Error
-}
-
-func (rr *DBResourceRelationship) create() error {
-	return DB().Create(rr).Error
-}
-
-func (rr *DBResourceRelationship) delete() error {
-	return DB().Delete(rr).Error
-}
-
 // 获取指定节点的所有相关节点ID
-func getAllRelationshipEdges(nodeId interface{}) ([]*ResourceEdge, error) {
-	var rrs []*DBResourceRelationship
+func getAllRelationshipEdges(nodeId interface{}) ([]*model.ResourceEdge, error) {
+	var rrs []*model.DBResourceRelationship
 	if result := DB().
 		Where("`source_resource_node_id` = ? OR"+
 			"`target_desource_node_id = ?`",
 			nodeId, nodeId).
 		Find(&rrs); result.Error != nil {
 		if result.RecordNotFound() {
-			return []*ResourceEdge{}, nil
+			return []*model.ResourceEdge{}, nil
 		}
-		return nil, err
+		return nil, result.Error
 	}
-	var results []*ResourceEdge
+	results := make([]*model.ResourceEdge, len(rrs))
 	for i := range rrs {
-		results = append(results,
-			&ResourceEdge{
-				Source: rrs.SourceResourceNodeID,
-				Target: rrs.SourceResourceNodeID,
-			})
+		results[i] = &model.ResourceEdge{
+			Source: rrs[i].SourceResourceNodeID,
+			Target: rrs[i].SourceResourceNodeID,
+		}
 	}
 	return results, nil
 }
 
 // 获取边列表中的所有节点
-func getAllRelationshipNodes(rrs []*ResourceEdge) ([]*ResourceNode, error) {
+func getAllRelationshipNodes(rrs []*model.ResourceEdge) ([]*model.ResourceNode, error) {
 	// 最多2倍的ID个数
 	tmp := make(map[int]struct{}, len(rrs)*2)
 	for i := range rrs {
-		tmp[rrs.Source] = struct{}{}
-		tmp[rrs.Target] = struct{}{}
+		tmp[rrs[i].Source] = struct{}{}
+		tmp[rrs[i].Target] = struct{}{}
 	}
 
-	casResource()
+	_, err := casResource()
+	if err != nil {
+		log.Error(err)
+	}
 	index := makeResourceIndex(cache.ResourceNodes.Data)
-	var results []*ResourceNode
+	var results []*model.ResourceNode
 	for k, _ := range tmp {
 		results = append(results,
 			index[k])
@@ -575,14 +521,14 @@ func makeResourceIndex(data []*model.ResourceNode) []*model.ResourceNode {
 
 func deleteNodeById(nodeId interface{}) error {
 	return DB().
-		Delete(DBResourceNode{},
+		Delete(model.DBResourceNode{},
 			"`id` = ?", nodeId).
 		Error
 }
 
 func deleteResourceRelationshipByNodeId(nodeId interface{}) error {
 	return DB().
-		Delete(DBResourceRelationship{},
+		Delete(model.DBResourceRelationship{},
 			"source_resource_node_id = ? OR "+
 				"target_resource_node_id = ?",
 			nodeId, nodeId).

@@ -2,16 +2,17 @@ package model
 
 import (
 	"time"
+
+	. "github.com/Madongming/resource-tree/global"
 )
 
 // DB recorder.
 type DBResourceRelationship struct {
-	ID                   int `gorm:"primary_key"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	DeletedAt            *time.Time
-	SourceResourceNodeID int
-	TargetResourceNodeID int
+	SourceResourceNodeID int `gorm:"index"`
+	TargetResourceNodeID int `gorm:"index"`
 }
 
 type ResourceEdge struct {
@@ -22,4 +23,12 @@ type ResourceEdge struct {
 type Graph struct {
 	Nodes []*ResourceNode `json:"nodes"`
 	Edges []*ResourceEdge `json:"edges"`
+}
+
+func (rr *DBResourceRelationship) Create() error {
+	return DB().Create(rr).Error
+}
+
+func (rr *DBResourceRelationship) Delete() error {
+	return DB().Delete(rr).Error
 }

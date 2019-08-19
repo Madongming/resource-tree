@@ -2,9 +2,8 @@ package cache
 
 import (
 	"sync"
-	"sync/atomic"
 
-	"model"
+	"github.com/Madongming/resource-tree/model"
 )
 
 type ResourceNodeList struct {
@@ -26,9 +25,10 @@ type TreeCache struct {
 }
 
 type LRU2 struct {
-	Cache1 *LRU
-	Cache2 *LRU
-	mux    sync.Mutex
+	Cache1  *LRU
+	Cache2  *LRU
+	mux     sync.Mutex
+	Version int
 }
 
 type LRU struct {

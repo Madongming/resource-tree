@@ -1,13 +1,12 @@
 package dao
 
 import (
-	"cache"
-	. "global"
-	"model"
+	. "github.com/Madongming/resource-tree/global"
+	"github.com/Madongming/resource-tree/model"
 )
 
-func PreDeleteNode(nodeId interface{}) (*cache.CacheGraph, error) {
-	return GetGraphByNodeId(nodeId)
+func PreDeleteNode(nodeId interface{}) (*model.Graph, error) {
+	return GetNodeGraph(nodeId)
 }
 
 func DeleteNode(nodeId interface{}) error {
@@ -19,7 +18,7 @@ func DeleteNode(nodeId interface{}) error {
 }
 
 func DeleteResourceRelationship(srcNodeId, tarNodeId interface{}) error {
-	rr := new(DBResourceRelationship)
+	rr := new(model.DBResourceRelationship)
 	if err := DB().
 		Where(
 			"source_resource_node_id = ? AND "+
@@ -31,5 +30,5 @@ func DeleteResourceRelationship(srcNodeId, tarNodeId interface{}) error {
 		return err
 	}
 	casEdgeVersion()
-	return rr.delete()
+	return rr.Delete()
 }
