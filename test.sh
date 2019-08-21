@@ -1,5 +1,7 @@
 #!/bin/sh
 
+go vet ./...
+
 # 停止mysql
 docker kill mysql
 
