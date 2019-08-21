@@ -76,7 +76,6 @@ func (tc *TreeCache) makeTree() error {
 	// 利用节点ID建立索引树节点的索引
 	// 第二个参数为了防止动态扩充索引切片
 	tc.makeTreeIndex(indexLen)
-
 	return nil
 }
 
@@ -119,7 +118,8 @@ func (tc *TreeCache) makeArray2Tree(indexLen int) error {
 	tc.ReTree.Node = new(model.ResourceNode)
 	tc.ReTree.Node.Parent = -1
 
-	makeTree(tc.ReTree, parentIndex)
+	root := tc.ReTree
+	makeTree(root, parentIndex)
 	return nil
 }
 
@@ -171,6 +171,7 @@ func makeIndex(tree *model.Tree, index []*model.Tree) {
 // 交换重新索引的数据及旧数据
 func (tc *TreeCache) swapReData() {
 	Mux.Lock()
+	tc.Tree, tc.ReTree = tc.ReTree, tc.Tree
 	tc.Index, tc.ReIndex = tc.ReIndex, tc.Index
 	tc.Version, tc.ReVersion = tc.ReVersion, tc.Version
 	Mux.Unlock()

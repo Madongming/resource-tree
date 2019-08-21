@@ -13,12 +13,18 @@ func makeTables() error {
 		&DBUserPermission{},
 		&DBGroupPermission{},
 		&DBResourceRelationship{},
+		&NodeVersion{},
+		&EdgeVersion{},
 	}
-	for i := range tables {
-		err := DB().Set("gorm:table_options", "ENGINE=InnoDB").CreateTable(tables[i]).Error
-		if err != nil {
-			return err
-		}
+	err := DB().Set("gorm:table_options", "ENGINE=InnoDB").CreateTable(tables...).Error
+	if err != nil {
+		return err
+	}
+	if err := DB().Create(&NodeVersion{Current: 1}).Error; err != nil {
+		return err
+	}
+	if err := DB().Create(&EdgeVersion{Current: 1}).Error; err != nil {
+		return err
 	}
 	return nil
 }

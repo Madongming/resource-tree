@@ -15,6 +15,9 @@ func CreateNode(name, description string, userId, parentId int, opts ...interfac
 	)
 
 	node := new(model.DBResourceNode)
+	node.Name = name
+	node.Description = description
+	node.Parent = parentId
 
 	// opts 0: cn_name, 1: key, 2: user permission, 3: group id, 4, group permission.
 	if opts == nil || len(opts) == 0 {
@@ -115,10 +118,14 @@ func AddGroupToNode(groupId interface{}, nodeId int, permissions ...int) error {
 
 // 加入一条资源的管理关系，可选参数userId如果传入，则判断两个节点是否都有权限
 func AddNodeToNode(srcNodeId, tarNodeId interface{}, userId ...int) error {
+	if isRelationshipExist(srcNodeId, tarNodeId) {
+		return ERR_RELATIONSHIP_EXIST_ALREADY
+	}
 	rr := new(model.DBResourceRelationship)
 	rr.SourceResourceNodeID = srcNodeId.(int)
 	rr.TargetResourceNodeID = tarNodeId.(int)
 	if userId == nil || len(userId) == 0 {
+		casEdgeVersion()
 		return rr.Create()
 	}
 
@@ -131,8 +138,8 @@ func AddNodeToNode(srcNodeId, tarNodeId interface{}, userId ...int) error {
 		return err
 	}
 	if srci && tari {
+		casEdgeVersion()
 		return rr.Create()
 	}
-	casEdgeVersion()
 	return ERR_PERMISSION_DENY
 }

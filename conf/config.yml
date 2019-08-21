@@ -1,12 +1,6 @@
 ---
 test: &test
   log: 'test.xml'
-  external_address: 'devops.sample.com'
-  http:
-    host: '0.0.0.0'
-    port: 8080
-    read_timeout: '30s'
-    write_timeout: '30s'
   mysql:
     user: 'root'
     pass: '123456'

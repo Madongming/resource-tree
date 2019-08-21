@@ -13,7 +13,7 @@ func GetGroupUsers(groupId interface{}) ([]*model.DBUser, error) {
 	var userGroups []*model.DBUserGroup
 	if result := DB().
 		Where("`group_id` = ?", groupId).
-		Find(userGroups); result.Error != nil {
+		Find(&userGroups); result.Error != nil {
 		if result.RecordNotFound() {
 			return nil, nil
 		}
@@ -85,7 +85,7 @@ func GetTree(userId interface{}, isFull ...bool) (*model.Tree, error) {
 	if err != nil {
 		return nil, err
 	}
-	if isFull == nil || len(isFull) == 0 || isFull[0] {
+	if isFull != nil && len(isFull) != 0 && isFull[0] {
 		// 不做权限校验，获取整棵树
 		return getAllTree()
 	}
@@ -107,6 +107,7 @@ SET_CACHE_AND_RETURN:
 	if err != nil {
 		return nil, err
 	}
+
 	cache.UserTreeLRU.Set(userId.(int), tree)
 	return tree, nil
 
@@ -125,23 +126,10 @@ func GetNodeGraph(nodeId interface{}) (*model.Graph, error) {
 			return value.(*model.Graph), nil
 		}
 	}
-	rrs, err := getAllRelationshipEdges(nodeId)
+
+	keys, nodes, rrs, err := getUserGraph(nodeId)
 	if err != nil {
 		return nil, err
-	}
-	if len(rrs) == 0 {
-		return nil, nil
-	}
-
-	nodes, err := getAllRelationshipNodes(rrs)
-	if err != nil {
-		return nil, err
-	}
-
-	// 写入缓存
-	keys := make([]int, len(nodes))
-	for i := range nodes {
-		keys[i] = nodes[i].ID
 	}
 	graph := &model.Graph{
 		Nodes: nodes,

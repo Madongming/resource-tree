@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# 停止mysql
+docker kill mysql
+
 # 启动mysql，做为测试使用
 docker run \
        --name mysql \
@@ -31,11 +34,11 @@ if [ $? -ne 0 ];then
 fi
 
 # Set env
+export RESOURCE_TREE_MODE="test"
 export CONFIG_FILE="/Users/madongming/Documents/GITREPO/mdm/resource-tree/conf/config.yml"
 export LOG_CONFIG_FILE="/Users/madongming/Documents/GITREPO/mdm/resource-tree/conf/test.xml"
 
 # 开始测试
-go test -v ./...
-
-# 停止mysql
-#docker kill mysql
+go clean -testcache
+go test -v ./model
+go test -v ./dao

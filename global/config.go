@@ -6,12 +6,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 
-	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
-
-	"github.com/Madongming/resource-tree/tools"
 )
 
 var Configs *Config
@@ -25,19 +21,10 @@ type ConfigFileAll struct {
 //Parse Yaml File
 type ConfigFile struct {
 	Log               string     `yaml:"log"`
-	ExternalAddress   string     `yaml:"external_address"`
-	Http              *HttpFile  `yaml:"http"`
 	Mysql             *MysqlFile `yaml:"mysql"`
 	UserCacheSize     int64      `yaml:"user_cache_size"`
 	ResourceCacheSize int64      `yaml:"resource_cache_size"`
 	GraphCacheSize    int64      `yaml:"graph_cache_size"`
-}
-
-type HttpFile struct {
-	Host         string `yaml:"host"`
-	Port         int64  `yaml:"port"`
-	ReadTimeout  string `yaml:"read_timeout"`
-	WriteTimeout string `yaml:"write_timeout"`
 }
 
 type MysqlFile struct {
@@ -54,19 +41,10 @@ type MysqlFile struct {
 //Userd for Program
 type Config struct {
 	Log               string
-	ExternalAddress   string
-	Http              *Http
 	Mysql             *Mysql
 	UserCacheSize     int64
 	ResourceCacheSize int64
 	GraphCacheSize    int64
-}
-
-type Http struct {
-	Host         string
-	Port         int64
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
 }
 
 type Mysql struct {
@@ -105,7 +83,7 @@ func initConfig() {
 
 	//用于存储根据环境变量确定的配置
 	var configFile *ConfigFile
-	switch gin.Mode() {
+	switch os.Getenv("RESOURCE_TREE_MODE") {
 	case "test", "debug":
 		configFile = configFileAll.TestFile
 	case "release":
@@ -115,16 +93,7 @@ func initConfig() {
 	}
 
 	Configs = &Config{
-		Log:             configFile.Log,
-		ExternalAddress: configFile.ExternalAddress,
-		Http: &Http{
-			Host: configFile.Http.Host,
-			Port: configFile.Http.Port,
-			ReadTimeout: tools.CoversionTimeBySuffix2TimeDuration(
-				configFile.Http.ReadTimeout),
-			WriteTimeout: tools.CoversionTimeBySuffix2TimeDuration(
-				configFile.Http.WriteTimeout),
-		},
+		Log: configFile.Log,
 		Mysql: &Mysql{
 			User:         configFile.Mysql.User,
 			Pass:         configFile.Mysql.Pass,

@@ -157,6 +157,9 @@ func (l2 *LRU2) Get(key int) (interface{}, error) {
 
 func NewTreeByPermission(permissionSet map[int]struct{}) (*model.Tree, error) {
 	newTree := new(model.Tree)
+	newTree.Node = new(model.ResourceNode)
+	newTree.Node.Parent = -1
+
 	newTreeByPermission(Tree.Tree, newTree, permissionSet)
 	return newTree, nil
 }

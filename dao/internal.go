@@ -1,8 +1,10 @@
 package dao
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/Madongming/wheelmaking/data-structure/queue"
 	log "github.com/cihub/seelog"
 
 	"github.com/Madongming/resource-tree/cache"
@@ -11,22 +13,20 @@ import (
 )
 
 func getCurrentVersion() (int, error) {
-	var version int64
-
+	currentVersion := new(model.NodeVersion)
 	if err := DB().
-		Raw("SELECT current FROM node_versions WHERE id = 1").
-		Scan(&version).
+		First(currentVersion, 1).
 		Error; err != nil {
 		return 0, err
 	}
-	return int(version), nil
+	return currentVersion.Current, nil
 }
 
 func casVersion() error {
 	// select current as c from version where id = 1;
 	// update current set current = current + 1 where id = 1 and current = c;
 
-Retry:
+Node_Retry:
 	version, err := getCurrentVersion()
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ Retry:
 			"set current = current + 1 "+
 			"WHERE id = 1 and current = ?",
 			version).RowsAffected == int64(0) {
-		goto Retry
+		goto Node_Retry
 	}
 	return nil
 }
@@ -61,33 +61,30 @@ func casResource() (bool, error) {
 }
 
 func getCurrentEdgeVersion() (int, error) {
-	var version int64
-
+	currentVersion := new(model.EdgeVersion)
 	if err := DB().
-		Raw("SELECT current FROM edge_versions WHERE id = 1").
-		Scan(&version).
+		First(currentVersion, 1).
 		Error; err != nil {
 		return 0, err
 	}
-	return int(version), nil
+	return currentVersion.Current, nil
 }
 
 func casEdgeVersion() error {
 	// select current as c from version where id = 1;
 	// update current set current = current + 1 where id = 1 and current = c;
 
-Retry:
+Edge_Retry:
 	version, err := getCurrentEdgeVersion()
 	if err != nil {
 		return err
 	}
-
 	if DB().
 		Exec("UPDATE edge_versions "+
 			"set current = current + 1 "+
 			"WHERE id = 1 and current = ?",
 			version).RowsAffected == int64(0) {
-		goto Retry
+		goto Edge_Retry
 	}
 	return nil
 }
@@ -112,7 +109,7 @@ func getAllTree() (*model.Tree, error) {
 func makeUserTreeIndex(userId interface{}) (*model.Tree, error) {
 	// 获取用户所有被显示设定有权限的节点
 	permissionSet, err := getUserNodes(userId.(int))
-	if err != nil {
+	if err != nil || len(permissionSet) == 0 {
 		return nil, err
 	}
 
@@ -270,7 +267,7 @@ func getUserGroups(userId interface{}) ([]*model.DBGroup, error) {
 	var userGroups []*model.DBUserGroup
 	if result := DB().
 		Where("`user_id` = ?", userId).
-		Find(userGroups); result.Error != nil {
+		Find(&userGroups); result.Error != nil {
 		if result.RecordNotFound() {
 			return []*model.DBGroup{}, nil
 		}
@@ -280,7 +277,7 @@ func getUserGroups(userId interface{}) ([]*model.DBGroup, error) {
 	groupIds := make([]interface{}, len(userGroups))
 	groupQuery := make([]string, len(userGroups))
 	for i := range userGroups {
-		groupIds[i] = userGroups[i].UserID
+		groupIds[i] = userGroups[i].GroupID
 		groupQuery[i] = "?"
 	}
 
@@ -397,11 +394,13 @@ func getUserNodes(userId interface{}) (map[int]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Printf("Get userid:%d's groups is %v\n", userId, groups)
 	groupNodeIds, err := getGroupsNodeIds(groups)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("Get userid:%d's groupNodeIds is %v\n", userId, groupNodeIds)
+
 	userNodeIds, err := getUserNodeIds(userId)
 	if err != nil {
 		return nil, err
@@ -464,49 +463,117 @@ func isUserHaveOneNodePermisson(userId interface{}, nodeIds []interface{}) (bool
 	return false, nil
 }
 
-// 获取指定节点的所有相关节点ID
-func getAllRelationshipEdges(nodeId interface{}) ([]*model.ResourceEdge, error) {
-	var rrs []*model.DBResourceRelationship
-	if result := DB().
-		Where("`source_resource_node_id` = ? OR"+
-			"`target_desource_node_id = ?`",
-			nodeId, nodeId).
-		Find(&rrs); result.Error != nil {
-		if result.RecordNotFound() {
-			return []*model.ResourceEdge{}, nil
-		}
-		return nil, result.Error
+func isRelationshipExist(nodeId1, nodeId2 interface{}) bool {
+	var count int
+	if err := DB().
+		Where("(`source_resource_node_id` = ? AND `target_resource_node_id` = ?)"+
+			" OR "+
+			"(`target_resource_node_id` = ? AND `source_resource_node_id` = ?)",
+			nodeId1, nodeId2, nodeId1, nodeId2).
+		Count(&count).Error; err != nil || count != 0 {
+		return false
 	}
-	results := make([]*model.ResourceEdge, len(rrs))
-	for i := range rrs {
-		results[i] = &model.ResourceEdge{
-			Source: rrs[i].SourceResourceNodeID,
-			Target: rrs[i].SourceResourceNodeID,
-		}
-	}
-	return results, nil
+	return true
 }
 
-// 获取边列表中的所有节点
-func getAllRelationshipNodes(rrs []*model.ResourceEdge) ([]*model.ResourceNode, error) {
-	// 最多2倍的ID个数
-	tmp := make(map[int]struct{}, len(rrs)*2)
-	for i := range rrs {
-		tmp[rrs[i].Source] = struct{}{}
-		tmp[rrs[i].Target] = struct{}{}
+func getUserGraph(nodeId interface{}) ([]int, []*model.ResourceNode, []*model.ResourceEdge, error) {
+	nodeSet, edgeSet, err := bfsGetNodesAndEdges(nodeId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	nodeIds := make([]int, len(nodeSet))
+	i := 0
+	for k, _ := range nodeSet {
+		nodeIds[i] = k
+		i++
 	}
 
-	_, err := casResource()
+	_, err = casResource()
 	if err != nil {
+		// 降级，使用缓存中的数据
 		log.Error(err)
 	}
+
 	index := makeResourceIndex(cache.ResourceNodes.Data)
-	var results []*model.ResourceNode
-	for k, _ := range tmp {
-		results = append(results,
-			index[k])
+	nodes := make([]*model.ResourceNode, len(nodeSet))
+	j := 0
+	for k, _ := range nodeSet {
+		nodes[j] = index[k]
+		j++
 	}
-	return results, nil
+
+	edges := make([]*model.ResourceEdge, len(edgeSet))
+	k := 0
+	for _, v := range edgeSet {
+		edges[k] = &model.ResourceEdge{
+			Source: v[0],
+			Target: v[1],
+		}
+		k++
+	}
+	return nodeIds, nodes, edges, nil
+}
+
+func bfsGetNodesAndEdges(nodeId interface{}) (map[int]struct{}, map[string][2]int, error) {
+	q := queue.NewQueue()
+	id, ok := nodeId.(int)
+	if !ok {
+		return nil, nil, ERR_ASSERTION
+	}
+
+	nodeSet := make(map[int]struct{})
+	edgeSet := make(map[string][2]int)
+
+	q.EnQueue(id)
+	for q.Size() != 0 {
+		curId, err := q.DeQueue()
+		if err != nil {
+			return nil, nil, err
+		}
+		nodeSet[curId] = struct{}{}
+		directNodeSet, directEdgeSet := getDirectNodesAndEdges(curId)
+		for k, _ := range directNodeSet {
+			if _, found := nodeSet[k]; !found {
+				q.EnQueue(k)
+			}
+		}
+		for k, v := range directEdgeSet {
+			edgeSet[k] = v
+		}
+	}
+	return nodeSet, edgeSet, nil
+}
+
+// 获取直连的节点及边的集合
+func getDirectNodesAndEdges(id int) (map[int]struct{}, map[string][2]int) {
+	var rrs []*model.DBResourceRelationship
+	if err := DB().
+		Where("(`source_resource_node_id` = ?"+
+			" OR "+
+			"`target_resource_node_id` = ?)",
+			id, id).
+		Find(&rrs).Error; err != nil {
+		return map[int]struct{}{}, map[string][2]int{}
+	}
+
+	nodeSet := make(map[int]struct{}, len(rrs)*2)
+	edgeSet := make(map[string][2]int, len(rrs))
+	for i := range rrs {
+		if rrs[i].SourceResourceNodeID != id {
+			nodeSet[rrs[i].SourceResourceNodeID] = struct{}{}
+		}
+		if rrs[i].TargetResourceNodeID != id {
+			nodeSet[rrs[i].TargetResourceNodeID] = struct{}{}
+		}
+		key := fmt.Sprintf("%d-%d",
+			rrs[i].SourceResourceNodeID,
+			rrs[i].TargetResourceNodeID)
+		edgeSet[key] = [2]int{
+			rrs[i].SourceResourceNodeID,
+			rrs[i].TargetResourceNodeID,
+		}
+	}
+	return nodeSet, edgeSet
 }
 
 // 制作缓存中节点数据的索引
@@ -529,8 +596,8 @@ func deleteNodeById(nodeId interface{}) error {
 func deleteResourceRelationshipByNodeId(nodeId interface{}) error {
 	return DB().
 		Delete(model.DBResourceRelationship{},
-			"source_resource_node_id = ? OR "+
-				"target_resource_node_id = ?",
+			"`source_resource_node_id` = ? OR "+
+				"`target_resource_node_id` = ?",
 			nodeId, nodeId).
 		Error
 }

@@ -1,6 +1,9 @@
 package model
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	. "github.com/Madongming/resource-tree/global"
@@ -32,4 +35,19 @@ func (rr *DBResourceRelationship) Create() error {
 
 func (rr *DBResourceRelationship) Delete() error {
 	return DB().Delete(rr).Error
+}
+
+func (g *Graph) String() string {
+	b, err := json.Marshal(g)
+	if err != nil {
+		return fmt.Sprintf("%#v", g)
+	}
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "\t")
+
+	if err != nil {
+		return fmt.Sprintf("%#v", g)
+	}
+
+	return out.String()
 }
