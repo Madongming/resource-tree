@@ -291,3 +291,43 @@ func TestGetGroupPermission(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAllResourceNodes(t *testing.T) {
+	type args struct {
+		userId interface{}
+		isFull []bool
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			name: "User mdm4(ID:4), Get full nodes.",
+			args: args{
+				userId: 4,
+				isFull: []bool{true},
+			},
+			wantErr: false,
+		},
+		{
+			name: "User mdm4(ID:4), Get self nodes.",
+			args: args{
+				userId: 4,
+				isFull: []bool{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetAllResourceNodes(tt.args.userId, tt.args.isFull...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetAllResourceNodes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			t.Logf("Get All ResourceNodes: %s", got)
+		})
+	}
+}

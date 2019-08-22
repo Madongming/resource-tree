@@ -52,6 +52,7 @@ func (tc *TreeCache) Set(version int, data []*model.DBResourceNode) error {
 
 	ResourceNodes.ReVersion = version
 	tc.ReVersion = version
+	tc.ReSize = len(data)
 	// 预分配加载数据的对象
 	ResourceNodes.perMallocReData(len(data))
 

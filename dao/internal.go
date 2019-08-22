@@ -601,3 +601,18 @@ func deleteResourceRelationshipByNodeId(nodeId interface{}) error {
 			nodeId, nodeId).
 		Error
 }
+
+func levelOrderTraverse(tree *model.Tree, results []*model.ResourceNode, resultSize int, index *int) {
+	if tree.Node == nil {
+		return
+	}
+	if tree.Node.ID != 0 {
+		if *index < resultSize {
+			results[*index] = tree.Node
+			(*index)++
+		}
+	}
+	for i := range tree.Childs {
+		levelOrderTraverse(tree.Childs[i], results, resultSize, index)
+	}
+}

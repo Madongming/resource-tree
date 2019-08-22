@@ -17,10 +17,12 @@ type ResourceNodeList struct {
 type TreeCache struct {
 	Tree    *model.Tree
 	Index   []*model.Tree
+	Size    int
 	Version int
 
 	ReTree    *model.Tree
 	ReIndex   []*model.Tree
+	ReSize    int
 	ReVersion int
 }
 

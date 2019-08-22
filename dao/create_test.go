@@ -159,10 +159,10 @@ func TestCreateNode(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 		{
-			name: "Add root node: huami.ID:1",
+			name: "Add root node: MyCompany.ID:1",
 			args: args{
-				name:        "huami",
-				description: "华米Inc.",
+				name:        "MyCompany",
+				description: "我的公司",
 				userId:      1,
 				parentId:    0,
 			},

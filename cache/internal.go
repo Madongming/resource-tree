@@ -173,6 +173,7 @@ func (tc *TreeCache) swapReData() {
 	Mux.Lock()
 	tc.Tree, tc.ReTree = tc.ReTree, tc.Tree
 	tc.Index, tc.ReIndex = tc.ReIndex, tc.Index
+	tc.Size, tc.ReSize = tc.ReSize, tc.Size
 	tc.Version, tc.ReVersion = tc.ReVersion, tc.Version
 	Mux.Unlock()
 }

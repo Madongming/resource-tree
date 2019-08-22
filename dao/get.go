@@ -159,3 +159,15 @@ func GetGroupPermission(groupId, nodeId int) (int64, error) {
 
 	return int64(permission.ReadWriteMask), nil
 }
+
+// 获取所有节点列表
+func GetAllResourceNodes(userId interface{}, isFull ...bool) ([]*model.ResourceNode, error) {
+	tree, err := GetTree(userId, isFull...)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]*model.ResourceNode, cache.Tree.Size)
+	var index int
+	levelOrderTraverse(tree, results, cache.Tree.Size, &index)
+	return results[0:index], nil
+}
