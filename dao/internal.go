@@ -516,20 +516,21 @@ func getUserGraph(nodeId interface{}) ([]int, []*model.ResourceNode, []*model.Re
 
 func bfsGetNodesAndEdges(nodeId interface{}) (map[int]struct{}, map[string][2]int, error) {
 	q := queue.NewQueue()
-	id, ok := nodeId.(int)
-	if !ok {
-		return nil, nil, ERR_ASSERTION
-	}
 
 	nodeSet := make(map[int]struct{})
 	edgeSet := make(map[string][2]int)
 
-	q.EnQueue(id)
+	q.EnQueue(nodeId)
 	for q.Size() != 0 {
-		curId, err := q.DeQueue()
+		curIdIter, err := q.DeQueue()
 		if err != nil {
 			return nil, nil, err
 		}
+		curId, ok := curIdIter.(int)
+		if !ok {
+			return nil, nil, ERR_ASSERTION
+		}
+
 		nodeSet[curId] = struct{}{}
 		directNodeSet, directEdgeSet := getDirectNodesAndEdges(curId)
 		for k, _ := range directNodeSet {
