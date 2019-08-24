@@ -1,6 +1,7 @@
 #!/bin/sh
 
 readonly CONTAINER_NAME="resource-tree-test-mysql"
+readonly HOST_NAME=`hostname`
 
 echo 'Start vet check.'
 go vet ./...
@@ -23,7 +24,14 @@ docker run \
 # 等待服务启动
 echo 'Waiting for start mysqld...'
 while true;do
-    mysql -h127.0.0.1 -uroot -p123456 -e "\q" > /dev/null 2>&1
+    docker run \
+	   --rm \
+	   mysql \
+	   mysql \
+	   -h$HOST_NAME \
+	   -uroot \
+	   -p123456 \
+	   -e "\q" > /dev/null 2>&1
     if [ $? -eq 0 ];then
 	break
     fi
@@ -34,7 +42,14 @@ echo ''
 
 # 创建库
 echo 'Created database `resource`'
-mysql -h127.0.0.1 -uroot -p123456 -e "create database resource default charset utf8" > /dev/null 2>&1
+    docker run \
+	   --rm \
+	   mysql \
+	   mysql \
+	   -h$HOST_NAME \
+	   -uroot \
+	   -p123456 \
+	   -e "create database resource default charset utf8" > /dev/null 2>&1
 
 # 判断是否启动成功
 if [ $? -ne 0 ];then
