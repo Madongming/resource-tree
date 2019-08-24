@@ -29,7 +29,7 @@ type ResourceNode struct {
 	Parent      int    `json:"parent"`
 	Description string `json:"description"`
 	Level       int    `json:"level"`
-	Name        string `json:"Name"`
+	Name        string `json:"name"`
 	CnName      string `json:"cnName"`
 	Key         string `json:"key"`
 }
@@ -39,7 +39,7 @@ func (n *DBResourceNode) Create() error {
 }
 
 func (n *DBResourceNode) Update() error {
-	return DB().Update(n).Error
+	return DB().Save(n).Error
 }
 
 func (n *DBResourceNode) Delete() error {

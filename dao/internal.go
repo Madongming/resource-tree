@@ -394,12 +394,10 @@ func getUserNodes(userId interface{}) (map[int]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Get userid:%d's groups is %v\n", userId, groups)
 	groupNodeIds, err := getGroupsNodeIds(groups)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Get userid:%d's groupNodeIds is %v\n", userId, groupNodeIds)
 
 	userNodeIds, err := getUserNodeIds(userId)
 	if err != nil {
@@ -435,10 +433,12 @@ func findAllNodesToRoot(nodeId interface{}) []interface{} {
 		node.Node.Level == 0 {
 		return []interface{}{}
 	}
+
 	permissions := make([]interface{}, node.Node.Level)
-	for tn := node; tn.Node.Parent != 0; {
-		permissions = append(permissions,
-			tn.Node.ID)
+	index := 0
+	for tn := node; tn.Node.Parent >= 0; {
+		permissions[index] = tn.Node.ID
+		index++
 		tp, err := cache.Tree.GetTreeNode(tn.Node.Parent)
 		if err != nil {
 			return []interface{}{}
@@ -455,7 +455,11 @@ func isUserHaveOneNodePermisson(userId interface{}, nodeIds []interface{}) (bool
 		return false, err
 	}
 	for i := range nodeIds {
-		_, found := permissionSet[nodeIds[i].(int)]
+		nodeId, ok := nodeIds[i].(int)
+		if !ok {
+			return false, ERR_ASSERTION
+		}
+		_, found := permissionSet[nodeId]
 		if found {
 			return true, nil
 		}
