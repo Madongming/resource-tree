@@ -2,6 +2,20 @@
 
 readonly CONTAINER_NAME="resource-tree-test-mysql"
 readonly HOST_NAME=`hostname`
+readonly RUN_DOCKER_MYSQL_DAEMON="docker run \
+       --name $CONTAINER_NAME \
+       --rm \
+       -e MYSQL_ROOT_PASSWORD=123456 \
+       -d \
+       -p3306:3306 \
+       mysql"
+readonly RUN_DOCKER_MYSQL_CMD="docker run \
+       --rm \
+       mysql \
+       mysql \
+       -h$HOST_NAME \
+       -uroot \
+       -p123456"
 
 echo 'Start vet check.'
 go vet ./...
@@ -13,25 +27,12 @@ docker kill $CONTAINER_NAME > /dev/null 2>&1
 
 echo 'Start mysql.'
 # 启动mysql，做为测试使用
-docker run \
-       --name $CONTAINER_NAME \
-       --rm \
-       -e MYSQL_ROOT_PASSWORD=123456 \
-       -d \
-       -p3306:3306 \
-       mysql
+$RUN_DOCKER_MYSQL_DAEMON
 
 # 等待服务启动
 echo 'Waiting for start mysqld...'
 while true;do
-    docker run \
-	   --rm \
-	   mysql \
-	   mysql \
-	   -h$HOST_NAME \
-	   -uroot \
-	   -p123456 \
-	   -e "\q" > /dev/null 2>&1
+    $RUN_DOCKER_MYSQL_CMD -e "\q" > /dev/null 2>&1
     if [ $? -eq 0 ];then
 	break
     fi
@@ -42,14 +43,7 @@ echo ''
 
 # 创建库
 echo 'Created database `resource`'
-    docker run \
-	   --rm \
-	   mysql \
-	   mysql \
-	   -h$HOST_NAME \
-	   -uroot \
-	   -p123456 \
-	   -e "create database resource default charset utf8" > /dev/null 2>&1
+$RUN_DOCKER_MYSQL_CMD -e "create database resource default charset utf8" > /dev/null 2>&1
 
 # 判断是否启动成功
 if [ $? -ne 0 ];then
