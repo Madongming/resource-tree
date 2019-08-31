@@ -185,6 +185,7 @@ func TestCreateNode(t *testing.T) {
 				description: "后端组",
 				userId:      1,
 				parentId:    1,
+				opts:        []interface{}{nil, nil, 1, nil, nil, "group=backend"},
 			},
 			wantErr: false,
 		},

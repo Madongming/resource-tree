@@ -92,6 +92,7 @@ func (rn *ResourceNodeList) changeModel2Resource(nodes []*model.DBResourceNode) 
 		rn.ReData[i].Name = nodes[i].Name
 		rn.ReData[i].CnName = nodes[i].CnName
 		rn.ReData[i].Key = nodes[i].Key
+		rn.ReData[i].Tags = nodes[i].Tags
 	}
 }
 

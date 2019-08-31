@@ -621,3 +621,11 @@ func levelOrderTraverse(tree *model.Tree, results []*model.ResourceNode, resultS
 		levelOrderTraverse(tree.Childs[i], results, resultSize, index)
 	}
 }
+
+func getInterfaceInt(val interface{}, defaultVal int) int {
+	i, ok := val.(int)
+	if ok {
+		return i
+	}
+	return defaultVal
+}

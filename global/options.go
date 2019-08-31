@@ -1,0 +1,7 @@
+package global
+
+const (
+	DEFAULT_OPTS_USER_PERMISSION  = 1
+	DEFAULT_OPTS_GROUP_PERMISSION = 1
+	DEFAULT_OPTS_TAGS             = ""
+)

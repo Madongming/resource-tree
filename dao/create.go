@@ -9,8 +9,8 @@ import (
 // 将一个节点加入树
 func CreateNode(name, description string, userId, parentId int, opts ...interface{}) error {
 	var (
-		userPermission = 1
-		groupPermisson = 1
+		userPermission = DEFAULT_OPTS_USER_PERMISSION
+		groupPermisson = DEFAULT_OPTS_GROUP_PERMISSION
 		groupId        = 0
 	)
 
@@ -19,33 +19,40 @@ func CreateNode(name, description string, userId, parentId int, opts ...interfac
 	node.Description = description
 	node.Parent = parentId
 
-	// opts 0: cn_name, 1: key, 2: user permission, 3: group id, 4, group permission.
+	// opts 0: cn_name, 1: key, 2: user permission, 3: group id, 4: group permission, 5: tags
 	if opts == nil || len(opts) == 0 {
 		node.CnName = name
 		node.Key = tools.GetUuid()
 	} else {
 		switch len(opts) {
 		case 1:
-			node.CnName = opts[0].(string)
-			node.Key = tools.GetUuid()
+			node.SetCnName(opts[0], name)
+			node.SetKey("", tools.GetUuid())
 		case 2:
-			node.CnName = opts[0].(string)
-			node.Key = opts[1].(string)
+			node.SetCnName(opts[0], name)
+			node.SetKey(opts[1], tools.GetUuid())
 		case 3:
-			node.CnName = opts[0].(string)
-			node.Key = opts[1].(string)
-			userPermission = opts[2].(int)
+			node.SetCnName(opts[0], name)
+			node.SetKey(opts[1], tools.GetUuid())
+			userPermission = getInterfaceInt(opts[2], DEFAULT_OPTS_USER_PERMISSION)
 		case 4:
-			node.CnName = opts[0].(string)
-			node.Key = opts[1].(string)
-			userPermission = opts[2].(int)
-			groupId = opts[3].(int)
+			node.SetCnName(opts[0], name)
+			node.SetKey(opts[1], tools.GetUuid())
+			userPermission = getInterfaceInt(opts[2], DEFAULT_OPTS_USER_PERMISSION)
+			groupId = getInterfaceInt(opts[3], 0)
+		case 5:
+			node.SetCnName(opts[0], name)
+			node.SetKey(opts[1], tools.GetUuid())
+			userPermission = getInterfaceInt(opts[2], DEFAULT_OPTS_USER_PERMISSION)
+			groupId = getInterfaceInt(opts[3], 0)
+			groupPermisson = getInterfaceInt(opts[4], DEFAULT_OPTS_GROUP_PERMISSION)
 		default:
-			node.CnName = opts[0].(string)
-			node.Key = opts[1].(string)
-			userPermission = opts[2].(int)
-			groupId = opts[3].(int)
-			groupPermisson = opts[4].(int)
+			node.SetCnName(opts[0], name)
+			node.SetKey(opts[1], tools.GetUuid())
+			userPermission = getInterfaceInt(opts[2], DEFAULT_OPTS_USER_PERMISSION)
+			groupId = getInterfaceInt(opts[3], 0)
+			groupPermisson = getInterfaceInt(opts[4], DEFAULT_OPTS_GROUP_PERMISSION)
+			node.SetTags(opts[5], DEFAULT_OPTS_TAGS)
 		}
 	}
 
