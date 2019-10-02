@@ -19,9 +19,9 @@ func (dblog *DBLog) Print(v ...interface{}) {
 
 var db *gorm.DB
 
-func initDb() error {
+func initDb() {
 	if db != nil {
-		return nil
+		return
 	}
 
 	dataSourceName := fmt.Sprintf(
@@ -38,7 +38,8 @@ func initDb() error {
 		db, e = gorm.Open("mysql", dataSourceName)
 		return e
 	}); err != nil {
-		return err
+		log.Error(err.Error())
+		os.Exit(1)
 	}
 	if os.Getenv("GIN_MODE") == "debug" || os.Getenv("GIN_MODE") == "test" {
 		db.LogMode(true)
@@ -50,7 +51,6 @@ func initDb() error {
 	//db.SingularTable(DBSingularTable)
 	db.DB().SetMaxIdleConns(int(Configs.Mysql.MaxOpenConns))
 	db.DB().SetMaxOpenConns(int(Configs.Mysql.MaxIdleConns))
-	return nil
 }
 
 func DB() *gorm.DB {
